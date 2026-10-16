@@ -89,4 +89,29 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
       }
     }
   }
+
+  if (config.addons.includes("cli")) {
+    // The `testing` addon's vitest factory file is the marker: when it exists
+    // (testing was scaffolded too, or added later), wire vitest into apps/cli.
+    const cliPkgPath = "apps/cli/package.json";
+    if (vfs.exists(cliPkgPath) && vfs.exists("packages/config/vitest/base.ts")) {
+      addPackageDependency({
+        vfs,
+        packagePath: cliPkgPath,
+        customDevDependencies: {
+          vitest: "^4.1.12",
+          "@vitest/coverage-istanbul": "^4.1.12",
+        },
+      });
+      const cliPkg = vfs.readJson<PackageJson>(cliPkgPath);
+      if (cliPkg) {
+        cliPkg.scripts = {
+          ...cliPkg.scripts,
+          test: "vitest run",
+          "test:coverage": "vitest run --coverage",
+        };
+        vfs.writeJson(cliPkgPath, cliPkg);
+      }
+    }
+  }
 }

@@ -692,6 +692,14 @@ export const TECH_OPTIONS: TechOptions = {
       color: "from-violet-500 to-indigo-700",
       default: false,
     },
+    {
+      id: "cli",
+      name: "CLI",
+      description: "Commander-based command-line app in apps/cli",
+      icon: "",
+      color: "from-emerald-500 to-teal-700",
+      default: false,
+    },
   ],
   examples: [
     {

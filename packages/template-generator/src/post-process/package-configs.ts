@@ -287,7 +287,8 @@ function updateRootPackageJson(vfs: VirtualFileSystem, config: ProjectConfig): v
     if (!workspaces.includes("packages/*")) {
       workspaces.push("packages/*");
     }
-    const needsAppsDir = config.frontend.length > 0 || addons.includes("starlight");
+    const needsAppsDir =
+      config.frontend.length > 0 || addons.includes("starlight") || addons.includes("cli");
     if (needsAppsDir && !workspaces.includes("apps/*")) {
       workspaces.push("apps/*");
     }

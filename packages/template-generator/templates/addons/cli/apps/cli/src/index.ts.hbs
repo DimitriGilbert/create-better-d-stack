@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+
+import { healthCommand } from "./commands/health";
+
+const program = new Command();
+
+program
+  .name("{{projectName}}")
+  .description("Command-line interface for {{projectName}}")
+  .version("0.0.0");
+
+program.addCommand(healthCommand);
+
+program
+  .command("info")
+  .description("Print information about this project")
+  .action(() => {
+    const stack: Record<string, string> = {
+      frontend: "{{frontend}}",
+      backend: "{{backend}}",
+      database: "{{database}}",
+      orm: "{{orm}}",
+      api: "{{api}}",
+      auth: "{{auth}}",
+      runtime: "{{runtime}}",
+      packageManager: "{{packageManager}}",
+    };
+    for (const [key, value] of Object.entries(stack)) {
+      console.log(`${key.padEnd(14)} ${value}`);
+    }
+  });
+
+program.parse();

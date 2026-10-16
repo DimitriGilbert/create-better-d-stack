@@ -590,6 +590,7 @@ function generateFeaturesList(
     oxlint: "- **Oxlint** - Oxlint + Oxfmt (linting & formatting)",
     husky: "- **Husky** - Git hooks for code quality",
     starlight: "- **Starlight** - Documentation site with Astro",
+    cli: "- **CLI** - Commander-based command-line app (apps/cli)",
     turborepo: "- **Turborepo** - Optimized monorepo build system",
     nx: "- **Nx** - Smart monorepo task orchestration and caching",
     "vite-plus":
@@ -846,6 +847,11 @@ function generateScriptsList(
   if (addons.includes("starlight")) {
     scripts += `\n- \`cd apps/docs && ${packageManagerRunCmd} dev\`: Start documentation site
 - \`cd apps/docs && ${packageManagerRunCmd} build\`: Build documentation site`;
+  }
+
+  if (addons.includes("cli")) {
+    scripts += `\n- \`cd apps/cli && ${packageManagerRunCmd} dev -- --help\`: Run the CLI in development (tsx)
+- \`cd apps/cli && ${packageManagerRunCmd} build\`: Build the CLI to dist/index.mjs`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {

@@ -58,6 +58,7 @@ const ADD_PACKAGE_JSON_PATHS = [
   "apps/web/package.json",
   "apps/native/package.json",
   "apps/desktop/package.json",
+  "apps/cli/package.json",
   "apps/fumadocs/package.json",
   "apps/docs/package.json",
   "packages/api/package.json",
@@ -72,6 +73,7 @@ const ADD_PACKAGE_JSON_PATHS = [
 
 const ADD_TEXT_FILE_PATHS = [
   "pnpm-workspace.yaml",
+  "packages/config/vitest/base.ts",
   "apps/web/vite.config.ts",
   "apps/web/next.config.ts",
   "apps/web/src/Document.tsx",

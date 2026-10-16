@@ -1,0 +1,24 @@
+import { Command } from "commander";
+
+{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
+{{else if (eq backend "self")}}
+const serverUrl = process.env.SERVER_URL ?? "{{#if (includes frontend "svelte")}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
+{{/if}}
+
+export const healthCommand = new Command("health")
+  .description("Check that the app server is reachable (override with SERVER_URL)")
+  .action(async () => {
+    {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia") (eq backend "self"))}}
+    try {
+      const response = await fetch(`${serverUrl}/`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      console.log(`OK — ${serverUrl}`);
+    } catch (error) {
+      console.error(`FAIL — ${serverUrl}:`, error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
+    {{else}}
+    console.log("No HTTP backend configured for this project.");
+    {{/if}}
+  });
