@@ -561,7 +561,7 @@ function getCliInstructions(runCmd: string, packageManager: ProjectConfig["packa
     "•",
   )} Build and run: ${`cd apps/cli && ${runCmd} build && node dist/index.mjs --help`}\n${pc.yellow(
     "NOTE:",
-  )} The health command hits the app server; set SERVER_URL to override the default URL.\n   Requires Node.js >= 22.12 (Commander 15).`;
+  )} The health command hits the app server; set CLI_HEALTH_URL to override the default URL.\n   Requires Node.js >= 22.12 (Commander 15).`;
 }
 
 function getNoOrmWarning() {

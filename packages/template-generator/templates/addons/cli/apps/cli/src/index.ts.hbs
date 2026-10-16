@@ -31,4 +31,10 @@ program
     }
   });
 
+// Bare invocation prints help and exits 0, so workspace `dev` aggregates
+// (turbo run dev / -r dev / --filter '*' dev) don't abort on this package.
+program.action(() => {
+  program.outputHelp();
+});
+
 program.parse();

@@ -443,6 +443,10 @@ function generateProjectStructure(config: ProjectConfig): string {
     structure.push("│   ├── docs/        # Documentation site (Astro Starlight)");
   }
 
+  if (addons.includes("cli")) {
+    structure.push("│   ├── cli/         # Command-line interface (Commander)");
+  }
+
   if (!isBackendSelf && backend !== "none" && !isConvex) {
     const backendName = (backend[0]?.toUpperCase() ?? "") + backend.slice(1);
     const apiName = api !== "none" ? api.toUpperCase() : "";
@@ -850,7 +854,10 @@ function generateScriptsList(
   }
 
   if (addons.includes("cli")) {
-    scripts += `\n- \`cd apps/cli && ${packageManagerRunCmd} dev -- --help\`: Run the CLI in development (tsx)
+    // npm needs the `--` separator to forward args to the script; pnpm and bun
+    // forward positional args directly (a literal `--` reaches the script on pnpm).
+    const argSep = packageManagerRunCmd === "npm run" ? " --" : "";
+    scripts += `\n- \`cd apps/cli && ${packageManagerRunCmd} dev${argSep} info\`: Run the CLI in development (tsx)
 - \`cd apps/cli && ${packageManagerRunCmd} build\`: Build the CLI to dist/index.mjs`;
   }
 

@@ -108,29 +108,14 @@ export const EMBEDDED_TEMPLATES: Map<string, string> = new Map([
   "bin": {
     "{{projectName}}": "./dist/index.mjs"
   },
-  "exports": {
-    ".": "./src/index.ts"
-  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsdown",
     "start": "node dist/index.mjs",
-    "check-types": "tsc --noEmit"{{#if (includes addons "testing")}},
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"{{/if}}
+    "check-types": "tsc --noEmit"
   },
-  "dependencies": {
-    "commander": "^15.0.0"
-  },
-  "devDependencies": {
-    "@{{projectName}}/config": "{{#if (eq packageManager "npm")}}*{{else}}workspace:*{{/if}}",
-    "@types/node": "^26.4.1",
-    "tsdown": "^0.23.0",
-    "tsx": "^4.23.13",
-    "typescript": "^6.0.3"{{#if (includes addons "testing")}},
-    "@vitest/coverage-istanbul": "^4.1.12",
-    "vitest": "^4.1.12"{{/if}}
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
 `],
   ["addons/cli/apps/cli/README.md.hbs", `# {{projectName}} — CLI
@@ -155,14 +140,22 @@ Or build the distributable entry point and run it directly:
 node apps/cli/dist/index.mjs --help
 \`\`\`
 
-The built binary is also linked as \`{{projectName}}\` by the workspace package
-manager, so \`{{projectName}} --help\` works after install.
+The \`bin\` field links \`{{projectName}}\` into \`node_modules/.bin\` — it points at
+\`dist/index.mjs\`, so run the build first, then invoke it through your package
+manager's exec command:
+
+\`\`\`sh
+{{#if (eq packageManager "pnpm")}}pnpm exec {{projectName}} --help{{else if (eq packageManager "npm")}}npx {{projectName}} --help{{else}}bun x {{projectName}} --help{{/if}}
+\`\`\`
 
 ## Commands
 
 - \`--help\` — list all commands.
 - \`info\` — print the stack this project was generated with.
-- \`health\` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to \`http://localhost:3000\`; override with the \`SERVER_URL\` environment variable.{{else if (eq backend "self")}} Defaults to the web dev server URL; override with the \`SERVER_URL\` environment variable.{{/if}}
+- \`health\` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to \`http://localhost:3000\`; override with \`CLI_HEALTH_URL\` (or \`SERVER_URL\`).{{else if (eq backend "self")}} Defaults to the web dev server URL; override with \`CLI_HEALTH_URL\` (or \`SERVER_URL\`).{{/if}}
+
+Environment variables are read from the process environment — the CLI does not
+load dotenv files itself.
 
 ## Layout
 
@@ -179,21 +172,28 @@ Create a new file in \`src/commands/\` exporting a \`Command\`, then register it
   ["addons/cli/apps/cli/src/commands/health.ts.hbs", `import { Command } from "commander";
 
 {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
-const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
+// The CLI does not load dotenv — export these in your shell (or .env loader of choice).
+// SERVER_URL is honored as a fallback for consistency with the rest of the project.
+const serverUrl =
+  process.env.CLI_HEALTH_URL ?? process.env.SERVER_URL ?? "http://localhost:3000";
 {{else if (eq backend "self")}}
-const serverUrl = process.env.SERVER_URL ?? "{{#if (includes frontend "svelte")}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
+const serverUrl =
+  process.env.CLI_HEALTH_URL ??
+  process.env.SERVER_URL ??
+  "{{#if (includes frontend "svelte")}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
 {{/if}}
 
 export const healthCommand = new Command("health")
-  .description("Check that the app server is reachable (override with SERVER_URL)")
+  .description("Check that the app server is reachable (override with CLI_HEALTH_URL)")
   .action(async () => {
     {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia") (eq backend "self"))}}
+    const baseUrl = serverUrl.replace(/\\/+$/, "");
     try {
-      const response = await fetch(\`\${serverUrl}/\`);
+      const response = await fetch(\`\${baseUrl}/\`);
       if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
-      console.log(\`OK — \${serverUrl}\`);
+      console.log(\`OK — \${baseUrl}\`);
     } catch (error) {
-      console.error(\`FAIL — \${serverUrl}:\`, error instanceof Error ? error.message : error);
+      console.error(\`FAIL — \${baseUrl}:\`, error instanceof Error ? error.message : error);
       process.exitCode = 1;
     }
     {{else}}
@@ -234,6 +234,12 @@ program
     }
   });
 
+// Bare invocation prints help and exits 0, so workspace \`dev\` aggregates
+// (turbo run dev / -r dev / --filter '*' dev) don't abort on this package.
+program.action(() => {
+  program.outputHelp();
+});
+
 program.parse();
 `],
   ["addons/cli/apps/cli/tsconfig.json.hbs", `{
@@ -252,7 +258,6 @@ export default defineConfig({
   format: "esm",
   outDir: "./dist",
   clean: true,
-  platform: "node",
   deps: {
     alwaysBundle: [/@{{projectName}}\\/.*/],
   },

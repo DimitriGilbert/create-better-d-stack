@@ -578,7 +578,9 @@ async function addHandlerInternal(
       (TASK_RUNNER_ADDONS as readonly Addons[]).includes(addon),
     );
 
-    if (hasTaskRunner || addonsToAdd.includes("electrobun")) {
+    // `cli` needs the root workspaces globs refreshed too (convex + no
+    // frontend omits "apps/*" until updateRootPackageJson re-runs).
+    if (hasTaskRunner || addonsToAdd.includes("electrobun") || addonsToAdd.includes("cli")) {
       const existingNames = new Map(
         ADD_PACKAGE_JSON_PATHS.map((filePath) => [
           filePath,

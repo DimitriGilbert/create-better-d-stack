@@ -20,14 +20,22 @@ Or build the distributable entry point and run it directly:
 node apps/cli/dist/index.mjs --help
 ```
 
-The built binary is also linked as `{{projectName}}` by the workspace package
-manager, so `{{projectName}} --help` works after install.
+The `bin` field links `{{projectName}}` into `node_modules/.bin` — it points at
+`dist/index.mjs`, so run the build first, then invoke it through your package
+manager's exec command:
+
+```sh
+{{#if (eq packageManager "pnpm")}}pnpm exec {{projectName}} --help{{else if (eq packageManager "npm")}}npx {{projectName}} --help{{else}}bun x {{projectName}} --help{{/if}}
+```
 
 ## Commands
 
 - `--help` — list all commands.
 - `info` — print the stack this project was generated with.
-- `health` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to `http://localhost:3000`; override with the `SERVER_URL` environment variable.{{else if (eq backend "self")}} Defaults to the web dev server URL; override with the `SERVER_URL` environment variable.{{/if}}
+- `health` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to `http://localhost:3000`; override with `CLI_HEALTH_URL` (or `SERVER_URL`).{{else if (eq backend "self")}} Defaults to the web dev server URL; override with `CLI_HEALTH_URL` (or `SERVER_URL`).{{/if}}
+
+Environment variables are read from the process environment — the CLI does not
+load dotenv files itself.
 
 ## Layout
 
