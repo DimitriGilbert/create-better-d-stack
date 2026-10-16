@@ -692,6 +692,14 @@ export const TECH_OPTIONS: TechOptions = {
       color: "from-violet-500 to-indigo-700",
       default: false,
     },
+    {
+      id: "shadcn-registry",
+      name: "shadcn Registry",
+      description: "Distribute packages/ui components via a shadcn registry",
+      icon: "",
+      color: "from-neutral-500 to-neutral-700",
+      default: false,
+    },
   ],
   examples: [
     {
