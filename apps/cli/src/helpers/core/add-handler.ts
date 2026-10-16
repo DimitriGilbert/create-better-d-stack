@@ -24,7 +24,11 @@ import z from "zod";
 import { getAddonsToAdd } from "../../prompts/addons";
 import type { AddInput, Addons, AddonOptions, AnalyticsMode, ProjectConfig } from "../../types";
 import { updateBtsConfig } from "../../utils/bts-config";
-import { TASK_RUNNER_ADDONS, validateAddonsAgainstConfig } from "../../utils/compatibility-rules";
+import {
+  TASK_RUNNER_ADDONS,
+  resolveAddonDependencies,
+  validateAddonsAgainstConfig,
+} from "../../utils/compatibility-rules";
 import { isSilent, resolveInvocationMode, runWithContextAsync } from "../../utils/context";
 import { errorClass, failureStage, reportDiagnostic, scrubReason } from "../../utils/diagnostics";
 import { formatConfigValue } from "../../utils/display-config";
@@ -72,6 +76,10 @@ const ADD_PACKAGE_JSON_PATHS = [
 
 const ADD_TEXT_FILE_PATHS = [
   "pnpm-workspace.yaml",
+  ".gitignore",
+  "turbo.json",
+  "nx.json",
+  "vite.config.ts",
   "apps/web/vite.config.ts",
   "apps/web/next.config.ts",
   "apps/web/src/Document.tsx",
@@ -453,6 +461,12 @@ async function addHandlerInternal(
     addonsToAdd = selectedAddons;
   }
 
+  // Pull in required addon dependencies (e.g. quality-metrics requires testing),
+  // skipping any that are already installed.
+  addonsToAdd = resolveAddonDependencies(addonsToAdd).filter(
+    (addon) => !existingConfig.addons.includes(addon),
+  );
+
   if (addonsToAdd.includes("axiom")) {
     return Result.err(
       new CLIError({
@@ -560,11 +574,18 @@ async function addHandlerInternal(
     processPnpmWorkspaceConfig(vfs, updatedConfig);
     processNpmScriptApprovals(vfs, updatedConfig);
 
-    if (addonsToAdd.includes("turborepo")) {
+    const runnerAffecting = addonsToAdd.some(
+      (addon) => addon === "testing" || addon === "e2e-testing",
+    );
+
+    if (
+      addonsToAdd.includes("turborepo") ||
+      (updatedAddons.includes("turborepo") && runnerAffecting)
+    ) {
       processTurboConfig(vfs, updatedConfig);
     }
 
-    if (addonsToAdd.includes("nx")) {
+    if (addonsToAdd.includes("nx") || (updatedAddons.includes("nx") && runnerAffecting)) {
       processNxConfig(vfs, updatedConfig);
     }
 

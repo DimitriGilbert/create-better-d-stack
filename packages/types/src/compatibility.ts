@@ -1,4 +1,4 @@
-import { desktopWebFrontends } from "./constants";
+import { desktopWebFrontends, webFrontends } from "./constants";
 import type {
   Addons,
   API,
@@ -93,8 +93,25 @@ export const ADDON_COMPATIBILITY = {
   skills: [],
   evlog: [],
   axiom: [],
+  testing: [],
+  "e2e-testing": [],
+  "quality-metrics": [],
   none: [],
 } as const;
+
+export const ADDON_DEPENDENCIES = {
+  "quality-metrics": ["testing"],
+} as const satisfies Partial<Record<Addons, readonly Addons[]>>;
+
+export function resolveAddonDependencies(addons: readonly Addons[]): Addons[] {
+  const resolved = [...new Set(addons)];
+  for (const addon of resolved) {
+    for (const dep of ADDON_DEPENDENCIES[addon as keyof typeof ADDON_DEPENDENCIES] ?? []) {
+      if (!resolved.includes(dep)) resolved.push(dep);
+    }
+  }
+  return resolved;
+}
 
 export function supportsEvlogAddon(
   frontend: readonly Frontend[] = [],
@@ -229,6 +246,18 @@ export function validateAddonCompatibility(
       reason:
         "tauri addon is not compatible with Convex Better Auth on Next.js or TanStack Start because those templates use server auth bootstrap and cannot be exported as static desktop assets.",
     };
+  }
+
+  if (addon === "e2e-testing") {
+    const hasWebSurface = frontend.some((f) => webFrontends.some((w) => w === f));
+    const hasServerApi = backend !== undefined && SERVER_BACKENDS.some((b) => b === backend);
+    if (!hasWebSurface && !hasServerApi && backend !== "self") {
+      return {
+        isCompatible: false,
+        reason:
+          "e2e-testing addon requires a web frontend or a Node/Bun server backend (hono, express, fastify, elysia, or self). Native-only and Convex-only projects have no HTTP surface to test.",
+      };
+    }
   }
 
   if (!Object.hasOwn(ADDON_COMPATIBILITY, addon))

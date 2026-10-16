@@ -100,6 +100,134 @@ export const EMBEDDED_TEMPLATES: Map<string, string> = new Map([
 	{{/if}}
 }
 `],
+  ["addons/e2e-testing/api/apps/e2e/e2e/api.spec.ts.hbs", `import { expect, test } from "@playwright/test";
+
+const apiURL =
+  process.env.E2E_API_URL ??
+  {{#if (eq backend "self")}}(process.env.E2E_WEB_URL ??
+    "{{#if (or (includes frontend "react-router") (includes frontend "svelte"))}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}"){{else}}"http://localhost:3000"{{/if}};
+
+test("api responds at /", async ({ request }) => {
+  const response = await request.get(\`\${apiURL}/\`);
+  expect(response.ok()).toBe(true);
+});
+`],
+  ["addons/e2e-testing/base/apps/e2e/package.json.hbs", `{
+  "name": "e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@{{projectName}}/config": "{{#if (eq packageManager "npm")}}*{{else}}workspace:*{{/if}}",
+    "@playwright/test": "^1.64.1",
+    "typescript": "^6.0.3"
+  }
+}
+`],
+  ["addons/e2e-testing/base/apps/e2e/playwright.config.ts.hbs", `import { defineConfig, devices } from "@playwright/test";
+
+// Override via E2E_WEB_URL / E2E_API_URL when testing a deployed or
+// differently-ported instance instead of the local dev servers.
+const webURL =
+  process.env.E2E_WEB_URL ??
+  "{{#if (or (includes frontend "react-router") (includes frontend "svelte"))}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
+const apiURL = process.env.E2E_API_URL ?? {{#if (eq backend "self")}}webURL{{else}}"http://localhost:3000"{{/if}};
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  use: { baseURL: webURL, trace: "on-first-retry", screenshot: "only-on-failure" },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 720 } },
+    },
+  ],
+{{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro") (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+  // These commands are root scripts — playwright runs them from this
+  // config's directory, so cwd climbs to the repo root.
+  webServer: [
+    {{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro"))}}
+    {
+      command:
+        "{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} dev:web",
+      cwd: "../..",
+      url: webURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {{/if}}
+    {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+    {
+      command:
+        "{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} dev:server",
+      cwd: "../..",
+      url: apiURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {{/if}}
+  ],
+{{/if}}
+});
+`],
+  ["addons/e2e-testing/base/apps/e2e/README.md.hbs", `# e2e
+
+Playwright end-to-end tests for this project.
+
+## Setup
+
+Install the browser binary once:
+
+\`\`\`bash
+{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} test:e2e:install
+\`\`\`
+
+## Running
+
+\`\`\`bash
+{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} test:e2e
+\`\`\`
+
+The \`webServer\` entries in \`playwright.config.ts\` boot the project dev
+servers (\`dev:web\` / \`dev:server\`) automatically and reuse an already-running
+server outside CI.
+
+## Environment overrides
+
+- \`E2E_WEB_URL\` — base URL for the web app (default: the dev-server port).
+- \`E2E_API_URL\` — base URL for the API checks in \`e2e/api.spec.ts\`.
+
+Set both to point the suite at a staging/deployment instead of localhost.
+
+## Notes
+
+- This package intentionally has no \`test\` script — \`turbo run test\` /
+  \`pnpm -r test\` run unit tests only. e2e is invoked explicitly via
+  \`test:e2e\`.
+- Reports land in \`playwright-report/\` (gitignored); artifacts on failure in
+  \`test-results/\` (gitignored).
+`],
+  ["addons/e2e-testing/base/apps/e2e/tsconfig.json.hbs", `{
+  "extends": "@{{projectName}}/config/tsconfig.base.json",
+  "include": ["e2e/**/*.ts", "playwright.config.ts"]
+}
+`],
+  ["addons/e2e-testing/web/apps/e2e/e2e/web.spec.ts.hbs", `import { expect, test } from "@playwright/test";
+
+test("homepage responds", async ({ page }) => {
+  const response = await page.goto("/");
+  expect(response?.ok()).toBe(true);
+});
+`],
   ["addons/electrobun/apps/desktop/.gitignore", `.hutch/
 /artifacts/
 /build/
@@ -416,6 +544,560 @@ export default defineConfig({
   preset,
   images: ["public/logo.png"],
 });
+`],
+  ["addons/quality-metrics/jscpd.config.json", `{
+  "minLines": 8,
+  "minTokens": 80,
+  "reporters": ["console", "html", "json"],
+  "output": "reports/jscpd",
+  "exitCode": 0,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/.output/**",
+    "**/.svelte-kit/**",
+    "**/.turbo/**",
+    "**/.expo/**",
+    "**/_generated/**",
+    "**/*.gen.ts",
+    "**/routeTree.gen.ts",
+    "**/reports/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/*.hbs"
+  ]
+}
+`],
+  ["addons/quality-metrics/knip.json", `{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["**/*.gen.ts", "**/_generated/**", "**/routeTree.gen.ts"]
+}
+`],
+  ["addons/quality-metrics/scripts/quality-crap.mjs", `/**
+ * quality:crap — run crap-score against every workspace's istanbul
+ * coverage-final.json and print the functions whose CRAP score is >= 30.
+ *
+ * CRAP (Change Risk Anti-Patterns) = complexity^2 * (1 - coverage)^3 + complexity.
+ * Report-only: this script always exits 0. Run \`<pm> test:coverage\` first.
+ */
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const CRAP_THRESHOLD = 30;
+
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const crapBin = path.join(repoRoot, "node_modules", ".bin", "crap");
+const reportsDir = path.join(repoRoot, "reports", "crap");
+
+if (!existsSync(crapBin)) {
+  console.error(
+    \`crap-score binary not found at \${crapBin} — run your package manager's install first.\`,
+  );
+  process.exit(0);
+}
+
+mkdirSync(reportsDir, { recursive: true });
+
+function collectCoverageFiles() {
+  const files = [];
+  for (const scope of ["apps", "packages"]) {
+    const scopeDir = path.join(repoRoot, scope);
+    if (!existsSync(scopeDir)) continue;
+    for (const entry of readdirSync(scopeDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const coverageFile = path.join(scopeDir, entry.name, "coverage", "coverage-final.json");
+      if (existsSync(coverageFile)) {
+        files.push({ dir: \`\${scope}/\${entry.name}\`, coverageFile });
+      }
+    }
+  }
+  return files;
+}
+
+const coverageFiles = collectCoverageFiles();
+if (coverageFiles.length === 0) {
+  console.log(
+    "No coverage-final.json files found — run the coverage suite first (e.g. \`test:coverage\`).",
+  );
+  process.exit(0);
+}
+
+const offenders = [];
+
+for (const { dir, coverageFile } of coverageFiles) {
+  const safeName = dir.replaceAll("/", "-");
+  const jsonOut = path.join(reportsDir, \`\${safeName}.json\`);
+  const htmlOut = path.join(reportsDir, \`\${safeName}-html\`);
+
+  execFileSync(crapBin, [\`--json=\${jsonOut}\`, \`--html=\${htmlOut}\`, coverageFile], {
+    stdio: "inherit",
+    cwd: repoRoot,
+  });
+
+  try {
+    const report = JSON.parse(readFileSync(jsonOut, "utf-8"));
+    const entries = Array.isArray(report) ? report : (report.functions ?? report.files ?? []);
+    for (const entry of entries) {
+      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
+      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
+        offenders.push({
+          dir,
+          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
+          crap,
+        });
+      }
+    }
+  } catch {
+    console.warn(\`Could not parse crap report for \${dir} — see \${jsonOut}\`);
+  }
+}
+
+if (offenders.length === 0) {
+  console.log(\`No functions at or above CRAP \${CRAP_THRESHOLD}.\`);
+} else {
+  console.log(\`\\nFunctions with CRAP >= \${CRAP_THRESHOLD}:\`);
+  for (const offender of offenders.sort((a, b) => b.crap - a.crap)) {
+    console.log(\`  \${offender.crap.toFixed(1)}  \${offender.dir}  \${offender.name}\`);
+  }
+}
+`],
+  ["addons/quality-metrics/scripts/quality-report.mjs", `/**
+ * quality:report — aggregate coverage, CRAP, and duplication reports into a
+ * single self-contained HTML dashboard at reports/quality/index.html plus a
+ * machine-readable reports/quality/summary.json. Report-only.
+ */
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const CRAP_THRESHOLD = 30;
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const outDir = path.join(repoRoot, "reports", "quality");
+
+function readJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf-8"));
+  } catch {
+    return undefined;
+  }
+}
+
+function collectPackages() {
+  const packages = [];
+  for (const scope of ["apps", "packages"]) {
+    const scopeDir = path.join(repoRoot, scope);
+    if (!existsSync(scopeDir)) continue;
+    for (const entry of readdirSync(scopeDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      packages.push({ name: \`\${scope}/\${entry.name}\`, dir: path.join(scopeDir, entry.name) });
+    }
+  }
+  return packages;
+}
+
+// istanbul coverage-final.json is a per-file map: fnMap/branchMap/statementMap
+// give locations, f/b/s give hit counts keyed to the same ids.
+function summarizeCoverage(coverageMap) {
+  const totals = {
+    statements: 0,
+    coveredStatements: 0,
+    functions: 0,
+    coveredFunctions: 0,
+    branches: 0,
+    coveredBranches: 0,
+  };
+  const lines = new Set();
+  const coveredLines = new Set();
+
+  for (const file of Object.values(coverageMap)) {
+    if (!file) continue;
+    for (const [id, hits] of Object.entries(file.s ?? {})) {
+      totals.statements += 1;
+      if (hits > 0) totals.coveredStatements += 1;
+      const loc = file.statementMap?.[id]?.start?.line;
+      if (loc != null) {
+        lines.add(\`\${file.path}:\${loc}\`);
+        if (hits > 0) coveredLines.add(\`\${file.path}:\${loc}\`);
+      }
+    }
+    for (const hits of Object.values(file.f ?? {})) {
+      totals.functions += 1;
+      if (hits > 0) totals.coveredFunctions += 1;
+    }
+    for (const hits of Object.values(file.b ?? {})) {
+      const counts = Array.isArray(hits) ? hits : [hits];
+      totals.branches += counts.length;
+      for (const count of counts) {
+        if (count > 0) totals.coveredBranches += 1;
+      }
+    }
+  }
+
+  const pct = (covered, total) => (total === 0 ? 100 : (covered / total) * 100);
+  return {
+    statements: pct(totals.coveredStatements, totals.statements),
+    functions: pct(totals.coveredFunctions, totals.functions),
+    branches: pct(totals.coveredBranches, totals.branches),
+    lines: pct(coveredLines.size, lines.size),
+  };
+}
+
+const coverage = [];
+for (const pkg of collectPackages()) {
+  const coverageFile = path.join(pkg.dir, "coverage", "coverage-final.json");
+  if (!existsSync(coverageFile)) continue;
+  const map = readJson(coverageFile);
+  if (map) coverage.push({ name: pkg.name, ...summarizeCoverage(map) });
+}
+
+const crapReportsDir = path.join(repoRoot, "reports", "crap");
+const crapOffenders = [];
+if (existsSync(crapReportsDir)) {
+  for (const file of readdirSync(crapReportsDir)) {
+    if (!file.endsWith(".json")) continue;
+    const report = readJson(path.join(crapReportsDir, file));
+    const entries = Array.isArray(report) ? report : (report?.functions ?? report?.files ?? []);
+    for (const entry of entries) {
+      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
+      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
+        crapOffenders.push({
+          package: file.replace(/\\.json$/, ""),
+          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
+          crap,
+        });
+      }
+    }
+  }
+}
+crapOffenders.sort((a, b) => b.crap - a.crap);
+
+const jscpdReport = readJson(path.join(repoRoot, "reports", "jscpd", "jscpd-report.json"));
+const duplication = jscpdReport?.statistics?.total
+  ? {
+      percentage: jscpdReport.statistics.total.percentage ?? 0,
+      clones: jscpdReport.statistics.total.clones ?? 0,
+    }
+  : undefined;
+
+const summary = { generatedAt: new Date().toISOString(), coverage, crapOffenders, duplication };
+mkdirSync(outDir, { recursive: true });
+writeFileSync(path.join(outDir, "summary.json"), \`\${JSON.stringify(summary, null, 2)}\\n\`);
+
+const esc = (value) =>
+  String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+const fmtPct = (value) => \`\${value.toFixed(1)}%\`;
+
+const coverageRows = coverage
+  .map(
+    (row) =>
+      \`<tr><td>\${esc(row.name)}</td><td>\${fmtPct(row.lines)}</td><td>\${fmtPct(
+        row.statements,
+      )}</td><td>\${fmtPct(row.functions)}</td><td>\${fmtPct(row.branches)}</td></tr>\`,
+  )
+  .join("\\n");
+
+const crapRows = crapOffenders
+  .map(
+    (row) =>
+      \`<tr><td>\${esc(row.package)}</td><td>\${esc(row.name)}</td><td>\${row.crap.toFixed(1)}</td></tr>\`,
+  )
+  .join("\\n");
+
+const html = \`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Quality report</title>
+<style>
+  body { font-family: ui-monospace, monospace; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+  h1, h2 { color: #f0f6fc; }
+  table { border-collapse: collapse; margin-bottom: 2rem; min-width: 32rem; }
+  th, td { border: 1px solid #30363d; padding: 0.4rem 0.8rem; text-align: left; }
+  th { background: #161b22; }
+  .muted { color: #8b949e; }
+</style>
+</head>
+<body>
+<h1>Quality report</h1>
+<p class="muted">Generated \${esc(summary.generatedAt)}</p>
+
+<h2>Coverage</h2>
+\${
+  coverage.length === 0
+    ? '<p class="muted">No coverage data — run the coverage suite first.</p>'
+    : \`<table><thead><tr><th>Package</th><th>Lines</th><th>Statements</th><th>Functions</th><th>Branches</th></tr></thead><tbody>\\n\${coverageRows}\\n</tbody></table>\`
+}
+
+<h2>CRAP &ge; \${CRAP_THRESHOLD}</h2>
+\${
+  crapOffenders.length === 0
+    ? '<p class="muted">No functions above the CRAP threshold.</p>'
+    : \`<table><thead><tr><th>Package</th><th>Function</th><th>CRAP</th></tr></thead><tbody>\\n\${crapRows}\\n</tbody></table>\`
+}
+
+<h2>Duplication</h2>
+\${
+  duplication === undefined
+    ? '<p class="muted">No jscpd report — run quality:duplication first.</p>'
+    : \`<p>\${fmtPct(duplication.percentage)} duplicated across \${duplication.clones} clone(s).</p>\`
+}
+</body>
+</html>
+\`;
+
+writeFileSync(path.join(outDir, "index.html"), html);
+console.log(\`Quality report written to \${path.relative(repoRoot, outDir)}/index.html\`);
+`],
+  ["addons/testing/apps-web-nuxt/app/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("web", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps-web-src/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("web", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps/cli/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("cli", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps/cli/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/apps/desktop/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("desktop", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps/desktop/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/apps/native/components/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("native", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps/native/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/apps/server/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("server", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/apps/server/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/apps/web/vitest.config.ts.hbs", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({
+    environment:
+      "{{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next"))}}jsdom{{else}}node{{/if}}",
+    setupFiles: ["../../packages/config/vitest/setup.ts"],
+  }),
+);
+`],
+  ["addons/testing/packages/api/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("api", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/packages/api/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/packages/auth/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("auth", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/packages/auth/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/packages/backend/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("backend", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/packages/backend/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/packages/db/src/smoke.test.ts", `import { describe, expect, it } from "vitest";
+
+describe("db", () => {
+  it("runs the test suite", () => {
+    expect(true).toBe(true);
+  });
+});
+`],
+  ["addons/testing/packages/db/vitest.config.ts", `import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({ setupFiles: ["../../packages/config/vitest/setup.ts"] }),
+);
+`],
+  ["addons/testing/packages/ui/src/components/button.test.tsx.hbs", `import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import { Button } from "@{{projectName}}/ui/components/button";
+
+describe("Button", () => {
+  it("renders a button element", () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole("button")).toBeTruthy();
+  });
+});
+`],
+  ["addons/testing/packages/ui/vitest.config.ts.hbs", `import { fileURLToPath } from "node:url";
+
+import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({
+    environment: "jsdom",
+    setupFiles: ["../../packages/config/vitest/setup.ts"],
+    resolve: {
+      // Components import each other via the package specifier; vitest does
+      // not read tsconfig paths, so map it to the package source explicitly.
+      alias: { "@{{projectName}}/ui": fileURLToPath(new URL("./src", import.meta.url)) },
+    },
+  }),
+);
+`],
+  ["addons/testing/shared/packages/config/vitest/base.ts", `import type { UserConfig } from "vitest/config";
+
+export type TestEnvironment = "node" | "jsdom";
+
+/**
+ * Shared vitest configuration factory. Each workspace wraps the result in
+ * \`defineConfig\` from its own \`vitest\` dependency:
+ *
+ *   import { defineConfig } from "vitest/config";
+ *   import { createTestConfig } from "../../packages/config/vitest/base";
+ *   export default defineConfig(createTestConfig({ setupFiles: [...] }));
+ */
+export function createTestConfig(
+  options: {
+    environment?: TestEnvironment;
+    setupFiles?: string[];
+    resolve?: UserConfig["resolve"];
+  } = {},
+): UserConfig {
+  return {
+    resolve: options.resolve,
+    test: {
+      environment: options.environment ?? "node",
+      setupFiles: options.setupFiles ?? [],
+      exclude: [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.{idea,git,cache,output,temp}/**",
+        "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*",
+      ],
+      coverage: {
+        // istanbul is required: the quality pipeline (crap-score) consumes
+        // istanbul's coverage-final.json format.
+        provider: "istanbul",
+        reporter: ["text", "json", "html"],
+        exclude: [
+          "**/*.test.*",
+          "**/*.gen.ts",
+          "**/_generated/**",
+          "**/migrations/**",
+          "**/*.sql",
+          "**/*.config.*",
+          "**/node_modules/**",
+          "**/dist/**",
+          "coverage/**",
+        ],
+      },
+    },
+  };
+}
+`],
+  ["addons/testing/shared/packages/config/vitest/setup.ts", `// Tests must not hit the live network. Any code path that needs fetch should
+// stub it in the test that exercises it.
+const blockedFetch = () => {
+  throw new Error("TEST FORBIDS LIVE NETWORK — stub fetch in the test that needs it");
+};
+
+globalThis.fetch = blockedFetch as typeof fetch;
 `],
   ["api/orpc/context.ts.hbs", `import type { Context as ApiContext } from "@{{projectName}}/api/context";
 {{#if (ne database "none")}}
@@ -35635,4 +36317,4 @@ export default function Success() {
 `]
 ]);
 
-export const TEMPLATE_COUNT = 532;
+export const TEMPLATE_COUNT = 565;

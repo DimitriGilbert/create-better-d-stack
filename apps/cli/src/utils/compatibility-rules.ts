@@ -33,6 +33,7 @@ export {
   PRISMA_COMPUTE_WEB_FRONTENDS,
   supportsPrismaWebDeploy,
   validateAddonCompatibility,
+  resolveAddonDependencies,
   type AddonCompatibility,
 } from "@better-t-stack/types";
 import { Result } from "better-result";
@@ -372,6 +373,12 @@ export function validateAddonsAgainstFrontends(
   if (selectedTaskRunners.length > 1) {
     return validationErr(
       "Cannot combine 'turborepo', 'nx', and 'vite-plus' addons. Choose one task runner.",
+    );
+  }
+
+  if (addons.includes("quality-metrics") && !addons.includes("testing")) {
+    return validationErr(
+      "The 'quality-metrics' addon requires the 'testing' addon. Include 'testing' in --addons.",
     );
   }
 

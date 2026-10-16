@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { Result } from "better-result";
 
+import { resolveAddonDependencies } from "../types";
 import type {
   API,
   Auth,
@@ -110,7 +111,7 @@ export function processFlags(options: CLIInput, projectName?: string) {
   }
 
   if (options.addons && options.addons.length > 0) {
-    config.addons = processArrayOption(options.addons);
+    config.addons = resolveAddonDependencies(processArrayOption(options.addons));
   }
 
   if (options.examples && options.examples.length > 0) {

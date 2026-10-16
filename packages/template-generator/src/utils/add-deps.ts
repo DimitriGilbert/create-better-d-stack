@@ -190,6 +190,18 @@ export const dependencyVersionMap = {
   "@stripe/stripe-js": "^9.15.0",
 
   evlog: "^2.30.1",
+
+  // Vitest v4 is the fleet convention (istanbul coverage feeds crap-score); not v5.
+  vitest: "^4.1.12",
+  "@vitest/coverage-istanbul": "^4.1.12",
+  jsdom: "^30.1.3",
+  "@testing-library/react": "^16.3.3",
+  "@testing-library/dom": "^10.4.2",
+  "@playwright/test": "^1.64.1",
+  // bin: crap — consumes istanbul coverage-final.json
+  "crap-score": "^1.2.1",
+  jscpd: "^5.4.1",
+  knip: "^6.41.0",
 } as const;
 
 export type AvailableDependencies = keyof typeof dependencyVersionMap;

@@ -62,5 +62,10 @@ export function getAllowedDependencyScripts(config: ProjectConfig): AllowedDepen
     allowed.nx = true;
   }
 
+  // vitest depends on esbuild, whose postinstall fetches a platform binary
+  if (config.addons.includes("testing")) {
+    allowed.esbuild = true;
+  }
+
   return allowed;
 }

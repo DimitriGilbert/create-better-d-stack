@@ -1,0 +1,49 @@
+import { defineConfig, devices } from "@playwright/test";
+
+// Override via E2E_WEB_URL / E2E_API_URL when testing a deployed or
+// differently-ported instance instead of the local dev servers.
+const webURL =
+  process.env.E2E_WEB_URL ??
+  "{{#if (or (includes frontend "react-router") (includes frontend "svelte"))}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
+const apiURL = process.env.E2E_API_URL ?? {{#if (eq backend "self")}}webURL{{else}}"http://localhost:3000"{{/if}};
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  use: { baseURL: webURL, trace: "on-first-retry", screenshot: "only-on-failure" },
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 720 } },
+    },
+  ],
+{{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro") (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+  // These commands are root scripts — playwright runs them from this
+  // config's directory, so cwd climbs to the repo root.
+  webServer: [
+    {{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro"))}}
+    {
+      command:
+        "{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} dev:web",
+      cwd: "../..",
+      url: webURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {{/if}}
+    {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+    {
+      command:
+        "{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} dev:server",
+      cwd: "../..",
+      url: apiURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {{/if}}
+  ],
+{{/if}}
+});

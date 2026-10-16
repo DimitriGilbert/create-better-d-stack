@@ -1,0 +1,11 @@
+import { expect, test } from "@playwright/test";
+
+const apiURL =
+  process.env.E2E_API_URL ??
+  {{#if (eq backend "self")}}(process.env.E2E_WEB_URL ??
+    "{{#if (or (includes frontend "react-router") (includes frontend "svelte"))}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}"){{else}}"http://localhost:3000"{{/if}};
+
+test("api responds at /", async ({ request }) => {
+  const response = await request.get(`${apiURL}/`);
+  expect(response.ok()).toBe(true);
+});

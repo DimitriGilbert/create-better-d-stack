@@ -1,0 +1,36 @@
+# e2e
+
+Playwright end-to-end tests for this project.
+
+## Setup
+
+Install the browser binary once:
+
+```bash
+{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} test:e2e:install
+```
+
+## Running
+
+```bash
+{{#if (eq packageManager "pnpm")}}pnpm{{else if (eq packageManager "npm")}}npm run{{else}}bun run{{/if}} test:e2e
+```
+
+The `webServer` entries in `playwright.config.ts` boot the project dev
+servers (`dev:web` / `dev:server`) automatically and reuse an already-running
+server outside CI.
+
+## Environment overrides
+
+- `E2E_WEB_URL` — base URL for the web app (default: the dev-server port).
+- `E2E_API_URL` — base URL for the API checks in `e2e/api.spec.ts`.
+
+Set both to point the suite at a staging/deployment instead of localhost.
+
+## Notes
+
+- This package intentionally has no `test` script — `turbo run test` /
+  `pnpm -r test` run unit tests only. e2e is invoked explicitly via
+  `test:e2e`.
+- Reports land in `playwright-report/` (gitignored); artifacts on failure in
+  `test-results/` (gitignored).
