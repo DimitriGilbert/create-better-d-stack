@@ -3,6 +3,7 @@ import type { ProjectConfig } from "@better-t-stack/types";
 import type { JsonValue } from "../core/json-types";
 import type { VirtualFileSystem } from "../core/virtual-fs";
 import { type AvailableDependencies, addPackageDependency } from "../utils/add-deps";
+import { TESTED_PACKAGE_DIRS } from "../utils/tested-package-dirs";
 
 type PackageJson = {
   name?: string;
@@ -106,6 +107,9 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
       addPackageDependency({ vfs, packagePath: pkgPath, devDependencies: devDeps });
       const pkg = vfs.readJson<PackageJson>(pkgPath);
       if (pkg) {
+        // Per-package scripts stay `vitest run` under every task runner,
+        // including vite-plus — the root aggregate (`vp run -r test`,
+        // `turbo run test`, ...) invokes them uniformly.
         pkg.scripts = {
           ...pkg.scripts,
           test: "vitest run",
@@ -115,14 +119,25 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
       }
     }
 
-    const root = vfs.readJson<PackageJson>("package.json");
-    if (root?.scripts) {
-      root.scripts.test = runAllScript(vfs, config, "test");
-      root.scripts["test:coverage"] = runAllScript(vfs, config, "test:coverage");
-      vfs.writeJson("package.json", root);
+    // packages/config/vitest/base.ts imports vitest/config (type-only, but tsc
+    // still resolves it from packages/config's own node_modules — required
+    // under pnpm's isolated layout).
+    if (vfs.exists("packages/config/package.json")) {
+      addPackageDependency({
+        vfs,
+        packagePath: "packages/config/package.json",
+        devDependencies: ["vitest"],
+      });
     }
 
-    appendGitignoreLines(vfs, ["# Test coverage", "**/coverage/"]);
+    const root = vfs.readJson<PackageJson>("package.json");
+    if (root?.scripts) {
+      // `??=` preserves user-customized test scripts on the `add` path.
+      root.scripts.test ??= runAllScript(vfs, config, "test");
+      root.scripts["test:coverage"] ??= runAllScript(vfs, config, "test:coverage");
+      vfs.writeJson("package.json", root);
+    }
+    // No .gitignore append needed — the base template already ignores coverage dirs.
   }
 
   if (config.addons.includes("e2e-testing")) {
@@ -169,25 +184,6 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
 }
 
 /**
- * Workspace dirs that get a vitest config + `test`/`test:coverage` scripts when
- * the testing addon is enabled. Existence is checked per dir because the
- * emitted set depends on the stack (and, via addons like cli/electrobun, on
- * other addons emitting their packages first).
- */
-const TESTED_PACKAGE_DIRS = [
-  "apps/web",
-  "apps/server",
-  "apps/native",
-  "apps/desktop",
-  "apps/cli",
-  "packages/ui",
-  "packages/db",
-  "packages/api",
-  "packages/auth",
-  "packages/backend",
-] as const;
-
-/**
  * Runner detection checks both the addon list (create flow: config.addons has
  * every selected addon, but turbo.json/nx.json are written after this
  * processor runs) and VFS markers (add flow: config.addons holds only the
@@ -197,10 +193,18 @@ function detectRunner(
   vfs: VirtualFileSystem,
   config: ProjectConfig,
 ): "turborepo" | "nx" | "vite-plus" | "none" {
-  if (config.addons.includes("turborepo") || vfs.exists("turbo.json")) return "turborepo";
+  if (config.addons.includes("turborepo") || vfs.exists("turbo.json") || vfs.exists("turbo.jsonc"))
+    return "turborepo";
   if (config.addons.includes("nx") || vfs.exists("nx.json")) return "nx";
-  // vite-plus projects carry a root vite.config.ts written by processVitePlusConfig
-  if (config.addons.includes("vite-plus") || vfs.exists("vite.config.ts")) return "vite-plus";
+  // A bare vite.config.ts at the root is ambiguous — confirm vite-plus via
+  // the addon list or the vite-plus dependency in the root manifest.
+  if (config.addons.includes("vite-plus")) return "vite-plus";
+  if (vfs.exists("vite.config.ts")) {
+    const root = vfs.readJson<PackageJson>("package.json");
+    if (root?.devDependencies?.["vite-plus"] || root?.dependencies?.["vite-plus"]) {
+      return "vite-plus";
+    }
+  }
   return "none";
 }
 

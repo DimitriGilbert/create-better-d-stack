@@ -864,7 +864,7 @@ function generateScriptsList(
 
   if (addons.includes("quality-metrics")) {
     scripts += `\n- \`${packageManagerRunCmd} quality\`: Generate coverage, CRAP, and duplication reports (reports/quality/index.html)
-- \`${packageManagerRunCmd} quality:knip\`: Report unused files, exports, and dependencies`;
+- \`${packageManagerRunCmd} quality:knip\`: Report unused files, exports, and dependencies (exits non-zero on findings — intentionally run manually, not chained into \`quality\`)`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { AddonsListSchema } from "@better-t-stack/types";
 
-import { add, create } from "../src";
+import { add, create, type Frontend } from "../src";
 import { addHandler } from "../src/helpers/core/add-handler";
 import { resolveAddonDependencies } from "../src/utils/compatibility-rules";
 import { expectError, expectSuccess, runCreateTest } from "./test-utils";
@@ -69,7 +69,7 @@ describe("testing addon", () => {
     expect(rootPkg.scripts["test:coverage"]).toBe("bun run --filter '*' test:coverage");
 
     const gitignore = await readFile(join(dir, ".gitignore"), "utf8");
-    expect(gitignore).toContain("**/coverage/");
+    expect(gitignore).toContain("coverage");
   });
 
   it("declares test tasks in turbo.json and uses turbo run scripts", async () => {
@@ -164,7 +164,7 @@ describe("testing addon", () => {
       projectName: "testing-nuxt",
       addons: ["testing"],
       frontend: ["nuxt"],
-      api: "orpc",
+      api: "none",
     });
     expectSuccess(result);
     const dir = result.projectDir;
@@ -256,6 +256,67 @@ describe("e2e-testing addon", () => {
     const playwrightConfig = await readFile(join(dir, "apps/e2e/playwright.config.ts"), "utf8");
     expect(playwrightConfig).toContain("dev:server");
     expect(playwrightConfig).not.toContain("dev:web");
+    // apiURL is only emitted alongside the dev:server webServer entry (C2)
+    expect(playwrightConfig).toContain("const apiURL");
+    expect(playwrightConfig).not.toContain("const webURL");
+  });
+
+  it("emits the dev-server default URL per web frontend", async () => {
+    const urlByFrontend = {
+      "tanstack-router": "http://localhost:3001",
+      next: "http://localhost:3001",
+      "tanstack-start": "http://localhost:3001",
+      nuxt: "http://localhost:3001",
+      "react-router": "http://localhost:5173",
+      svelte: "http://localhost:5173",
+      astro: "http://localhost:4321",
+      solid: "http://localhost:3001",
+    } as const;
+    for (const [frontend, expectedUrl] of Object.entries(urlByFrontend)) {
+      const result = await runCreateTest({
+        projectName: `e2e-port-${frontend}`,
+        addons: ["e2e-testing"],
+        frontend: [frontend as Frontend],
+        backend: "none",
+        runtime: "none",
+        api: "none",
+        database: "none",
+        orm: "none",
+        auth: "none",
+      });
+      expectSuccess(result);
+      const config = await readFile(
+        join(result.projectDir, "apps/e2e/playwright.config.ts"),
+        "utf8",
+      );
+      expect(config).toContain(`"${expectedUrl}"`);
+    }
+  });
+
+  it("omits apiURL for backends without a dev:server entry", async () => {
+    for (const [name, config] of [
+      ["e2e-self", { frontend: ["next"] as Frontend[], backend: "self" }],
+      ["e2e-convex-nourl", { backend: "convex" }],
+    ] as const) {
+      const result = await runCreateTest({
+        projectName: name,
+        addons: ["e2e-testing"],
+        runtime: "none",
+        database: "none",
+        orm: "none",
+        api: "none",
+        auth: "none",
+        ...config,
+      });
+      expectSuccess(result);
+      const playwrightConfig = await readFile(
+        join(result.projectDir, "apps/e2e/playwright.config.ts"),
+        "utf8",
+      );
+      expect(playwrightConfig).not.toContain("const apiURL");
+      expect(playwrightConfig).not.toContain("dev:server");
+      expect(playwrightConfig).toContain("const webURL");
+    }
   });
 
   it("never boots convex dev as an e2e webServer", async () => {
@@ -335,7 +396,7 @@ describe("testing addons via the add command", () => {
     const webPkg = await readJson(join(projectDir, "apps/web/package.json"));
     expect(webPkg.scripts.test).toBe("vitest run");
     const gitignore = await readFile(join(projectDir, ".gitignore"), "utf8");
-    expect(gitignore).toContain("**/coverage/");
+    expect(gitignore).toContain("coverage");
 
     const addQuality = await add({
       projectDir,
@@ -386,5 +447,31 @@ describe("testing addons via the add command", () => {
     const btsConfig = await readFile(join(projectDir, "bts.jsonc"), "utf8");
     expect(btsConfig).toContain('"testing"');
     expect(btsConfig).toContain('"quality-metrics"');
+  });
+
+  it("merges test tasks into a user-edited turbo.json instead of regenerating", async () => {
+    const created = await runCreateTest({
+      projectName: "turbo-merge",
+      addons: ["turborepo"],
+    });
+    expectSuccess(created);
+    const projectDir = created.result.projectDirectory;
+    const turboPath = join(projectDir, "turbo.json");
+
+    // Simulate a user edit: custom task + reordered metadata
+    const turboJson = await readJson(turboPath);
+    turboJson.tasks["my-custom-task"] = { cache: false, customFlag: true };
+    turboJson.ui = "stream";
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(turboPath, JSON.stringify(turboJson, null, 2));
+
+    const addResult = await add({ projectDir, addons: ["testing"], install: false });
+    expect(addResult?.success).toBe(true);
+
+    const merged = await readJson(turboPath);
+    expect(merged.tasks["my-custom-task"]).toEqual({ cache: false, customFlag: true });
+    expect(merged.ui).toBe("stream");
+    expect(merged.tasks.test).toBeDefined();
+    expect(merged.tasks["test:coverage"]).toBeDefined();
   });
 });

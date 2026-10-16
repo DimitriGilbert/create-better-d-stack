@@ -1,4 +1,4 @@
-import type { UserConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
 
 export type TestEnvironment = "node" | "jsdom";
 
@@ -14,9 +14,9 @@ export function createTestConfig(
   options: {
     environment?: TestEnvironment;
     setupFiles?: string[];
-    resolve?: UserConfig["resolve"];
+    resolve?: ViteUserConfig["resolve"];
   } = {},
-): UserConfig {
+): ViteUserConfig {
   return {
     resolve: options.resolve,
     test: {

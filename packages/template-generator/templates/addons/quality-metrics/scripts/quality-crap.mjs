@@ -33,12 +33,43 @@ function collectCoverageFiles() {
     for (const entry of readdirSync(scopeDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const coverageFile = path.join(scopeDir, entry.name, "coverage", "coverage-final.json");
-      if (existsSync(coverageFile)) {
-        files.push({ dir: `${scope}/${entry.name}`, coverageFile });
+      if (!existsSync(coverageFile)) continue;
+      // crap-score crashes on empty coverage maps (getRootDir reads keys[0]).
+      try {
+        if (Object.keys(JSON.parse(readFileSync(coverageFile, "utf-8"))).length === 0) {
+          continue;
+        }
+      } catch {
+        continue;
       }
+      files.push({ dir: `${scope}/${entry.name}`, coverageFile });
     }
   }
   return files;
+}
+
+// crap-score's CrapReportJsonObject is a nested map:
+//   { [sourcePath]: { [functionName]: { complexity, statements: { crap }, functionDescriptor } } }
+function collectOffenders(report, dir) {
+  const offenders = [];
+  let parsed = 0;
+  for (const [sourcePath, functions] of Object.entries(report)) {
+    if (!functions) continue;
+    for (const [functionName, fn] of Object.entries(functions)) {
+      const crap = Number(fn?.statements?.crap);
+      if (!Number.isFinite(crap)) continue;
+      parsed += 1;
+      if (crap >= CRAP_THRESHOLD) {
+        offenders.push({ dir, sourcePath, functionName, crap });
+      }
+    }
+  }
+  if (parsed === 0 && Object.keys(report).length > 0) {
+    console.warn(
+      `crap report for ${dir} parsed zero functions — the report shape may have changed.`,
+    );
+  }
+  return offenders;
 }
 
 const coverageFiles = collectCoverageFiles();
@@ -56,24 +87,20 @@ for (const { dir, coverageFile } of coverageFiles) {
   const jsonOut = path.join(reportsDir, `${safeName}.json`);
   const htmlOut = path.join(reportsDir, `${safeName}-html`);
 
-  execFileSync(crapBin, [`--json=${jsonOut}`, `--html=${htmlOut}`, coverageFile], {
-    stdio: "inherit",
-    cwd: repoRoot,
-  });
+  // Report-only: a single bad coverage file must not abort the pipeline.
+  try {
+    execFileSync(crapBin, [`--json=${jsonOut}`, `--html=${htmlOut}`, coverageFile], {
+      stdio: "inherit",
+      cwd: repoRoot,
+    });
+  } catch (error) {
+    console.warn(`crap-score failed for ${dir}: ${error instanceof Error ? error.message : error}`);
+    continue;
+  }
 
   try {
     const report = JSON.parse(readFileSync(jsonOut, "utf-8"));
-    const entries = Array.isArray(report) ? report : (report.functions ?? report.files ?? []);
-    for (const entry of entries) {
-      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
-      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
-        offenders.push({
-          dir,
-          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
-          crap,
-        });
-      }
-    }
+    offenders.push(...collectOffenders(report, dir));
   } catch {
     console.warn(`Could not parse crap report for ${dir} — see ${jsonOut}`);
   }
@@ -84,6 +111,8 @@ if (offenders.length === 0) {
 } else {
   console.log(`\nFunctions with CRAP >= ${CRAP_THRESHOLD}:`);
   for (const offender of offenders.sort((a, b) => b.crap - a.crap)) {
-    console.log(`  ${offender.crap.toFixed(1)}  ${offender.dir}  ${offender.name}`);
+    console.log(
+      `  ${offender.crap.toFixed(1)}  ${offender.dir}  ${offender.functionName} (${offender.sourcePath})`,
+    );
   }
 }

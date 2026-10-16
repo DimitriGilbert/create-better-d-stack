@@ -125,6 +125,7 @@ test("api responds at /", async ({ request }) => {
   "devDependencies": {
     "@{{projectName}}/config": "{{#if (eq packageManager "npm")}}*{{else}}workspace:*{{/if}}",
     "@playwright/test": "^1.64.1",
+    "@types/node": "^26.4.1",
     "typescript": "^6.0.3"
   }
 }
@@ -133,10 +134,14 @@ test("api responds at /", async ({ request }) => {
 
 // Override via E2E_WEB_URL / E2E_API_URL when testing a deployed or
 // differently-ported instance instead of the local dev servers.
+{{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro"))}}
 const webURL =
   process.env.E2E_WEB_URL ??
   "{{#if (or (includes frontend "react-router") (includes frontend "svelte"))}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
-const apiURL = process.env.E2E_API_URL ?? {{#if (eq backend "self")}}webURL{{else}}"http://localhost:3000"{{/if}};
+{{/if}}
+{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+const apiURL = process.env.E2E_API_URL ?? "http://localhost:3000";
+{{/if}}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -144,7 +149,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
-  use: { baseURL: webURL, trace: "on-first-retry", screenshot: "only-on-failure" },
+  use: {
+    {{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next") (includes frontend "nuxt") (includes frontend "svelte") (includes frontend "solid") (includes frontend "astro"))}}baseURL: webURL,
+    {{/if}}trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
   projects: [
     {
       name: "chromium",
@@ -218,6 +227,10 @@ Set both to point the suite at a staging/deployment instead of localhost.
 `],
   ["addons/e2e-testing/base/apps/e2e/tsconfig.json.hbs", `{
   "extends": "@{{projectName}}/config/tsconfig.base.json",
+  // Pinned so the suite typechecks identically regardless of project runtime —
+  // the base config emits "bun" for bun projects, which would demand @types/bun
+  // inside this package's isolated node_modules.
+  "compilerOptions": { "types": ["node"] },
   "include": ["e2e/**/*.ts", "playwright.config.ts"]
 }
 `],
@@ -612,12 +625,43 @@ function collectCoverageFiles() {
     for (const entry of readdirSync(scopeDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const coverageFile = path.join(scopeDir, entry.name, "coverage", "coverage-final.json");
-      if (existsSync(coverageFile)) {
-        files.push({ dir: \`\${scope}/\${entry.name}\`, coverageFile });
+      if (!existsSync(coverageFile)) continue;
+      // crap-score crashes on empty coverage maps (getRootDir reads keys[0]).
+      try {
+        if (Object.keys(JSON.parse(readFileSync(coverageFile, "utf-8"))).length === 0) {
+          continue;
+        }
+      } catch {
+        continue;
       }
+      files.push({ dir: \`\${scope}/\${entry.name}\`, coverageFile });
     }
   }
   return files;
+}
+
+// crap-score's CrapReportJsonObject is a nested map:
+//   { [sourcePath]: { [functionName]: { complexity, statements: { crap }, functionDescriptor } } }
+function collectOffenders(report, dir) {
+  const offenders = [];
+  let parsed = 0;
+  for (const [sourcePath, functions] of Object.entries(report)) {
+    if (!functions) continue;
+    for (const [functionName, fn] of Object.entries(functions)) {
+      const crap = Number(fn?.statements?.crap);
+      if (!Number.isFinite(crap)) continue;
+      parsed += 1;
+      if (crap >= CRAP_THRESHOLD) {
+        offenders.push({ dir, sourcePath, functionName, crap });
+      }
+    }
+  }
+  if (parsed === 0 && Object.keys(report).length > 0) {
+    console.warn(
+      \`crap report for \${dir} parsed zero functions — the report shape may have changed.\`,
+    );
+  }
+  return offenders;
 }
 
 const coverageFiles = collectCoverageFiles();
@@ -635,24 +679,20 @@ for (const { dir, coverageFile } of coverageFiles) {
   const jsonOut = path.join(reportsDir, \`\${safeName}.json\`);
   const htmlOut = path.join(reportsDir, \`\${safeName}-html\`);
 
-  execFileSync(crapBin, [\`--json=\${jsonOut}\`, \`--html=\${htmlOut}\`, coverageFile], {
-    stdio: "inherit",
-    cwd: repoRoot,
-  });
+  // Report-only: a single bad coverage file must not abort the pipeline.
+  try {
+    execFileSync(crapBin, [\`--json=\${jsonOut}\`, \`--html=\${htmlOut}\`, coverageFile], {
+      stdio: "inherit",
+      cwd: repoRoot,
+    });
+  } catch (error) {
+    console.warn(\`crap-score failed for \${dir}: \${error instanceof Error ? error.message : error}\`);
+    continue;
+  }
 
   try {
     const report = JSON.parse(readFileSync(jsonOut, "utf-8"));
-    const entries = Array.isArray(report) ? report : (report.functions ?? report.files ?? []);
-    for (const entry of entries) {
-      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
-      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
-        offenders.push({
-          dir,
-          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
-          crap,
-        });
-      }
-    }
+    offenders.push(...collectOffenders(report, dir));
   } catch {
     console.warn(\`Could not parse crap report for \${dir} — see \${jsonOut}\`);
   }
@@ -663,7 +703,9 @@ if (offenders.length === 0) {
 } else {
   console.log(\`\\nFunctions with CRAP >= \${CRAP_THRESHOLD}:\`);
   for (const offender of offenders.sort((a, b) => b.crap - a.crap)) {
-    console.log(\`  \${offender.crap.toFixed(1)}  \${offender.dir}  \${offender.name}\`);
+    console.log(
+      \`  \${offender.crap.toFixed(1)}  \${offender.dir}  \${offender.functionName} (\${offender.sourcePath})\`,
+    );
   }
 }
 `],
@@ -758,20 +800,32 @@ for (const pkg of collectPackages()) {
 
 const crapReportsDir = path.join(repoRoot, "reports", "crap");
 const crapOffenders = [];
+// crap-score's CrapReportJsonObject: { [sourcePath]: { [functionName]: { statements: { crap } } } }
 if (existsSync(crapReportsDir)) {
   for (const file of readdirSync(crapReportsDir)) {
     if (!file.endsWith(".json")) continue;
     const report = readJson(path.join(crapReportsDir, file));
-    const entries = Array.isArray(report) ? report : (report?.functions ?? report?.files ?? []);
-    for (const entry of entries) {
-      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
-      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
-        crapOffenders.push({
-          package: file.replace(/\\.json$/, ""),
-          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
-          crap,
-        });
+    if (!report) continue;
+    let parsed = 0;
+    for (const [sourcePath, functions] of Object.entries(report)) {
+      if (!functions) continue;
+      for (const [functionName, fn] of Object.entries(functions)) {
+        const crap = Number(fn?.statements?.crap);
+        if (!Number.isFinite(crap)) continue;
+        parsed += 1;
+        if (crap >= CRAP_THRESHOLD) {
+          crapOffenders.push({
+            package: file.replace(/\\.json$/, ""),
+            name: \`\${functionName} (\${sourcePath})\`,
+            crap,
+          });
+        }
       }
+    }
+    if (parsed === 0 && Object.keys(report).length > 0) {
+      console.warn(
+        \`crap report \${file} parsed zero functions — the report shape may have changed.\`,
+      );
     }
   }
 }
@@ -1040,7 +1094,7 @@ export default defineConfig(
   }),
 );
 `],
-  ["addons/testing/shared/packages/config/vitest/base.ts", `import type { UserConfig } from "vitest/config";
+  ["addons/testing/shared/packages/config/vitest/base.ts", `import type { ViteUserConfig } from "vitest/config";
 
 export type TestEnvironment = "node" | "jsdom";
 
@@ -1056,9 +1110,9 @@ export function createTestConfig(
   options: {
     environment?: TestEnvironment;
     setupFiles?: string[];
-    resolve?: UserConfig["resolve"];
+    resolve?: ViteUserConfig["resolve"];
   } = {},
-): UserConfig {
+): ViteUserConfig {
   return {
     resolve: options.resolve,
     test: {

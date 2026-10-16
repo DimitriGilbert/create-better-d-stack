@@ -1,25 +1,8 @@
 import { SERVER_BACKENDS, type ProjectConfig } from "@better-t-stack/types";
 
 import type { VirtualFileSystem } from "../core/virtual-fs";
+import { TESTED_PACKAGE_DIRS } from "../utils/tested-package-dirs";
 import { type TemplateData, processTemplatesFromPrefix } from "./utils";
-
-/**
- * Package dirs that receive vitest config + smoke tests when the testing
- * addon is enabled. Emitted after the addon loop so packages written by
- * sibling addons (electrobun's apps/desktop, cli's apps/cli) are visible.
- */
-const TESTED_PACKAGE_DIRS = [
-  "apps/web",
-  "apps/server",
-  "apps/native",
-  "apps/desktop",
-  "apps/cli",
-  "packages/ui",
-  "packages/db",
-  "packages/api",
-  "packages/auth",
-  "packages/backend",
-] as const;
 
 export async function processAddonTemplates(
   vfs: VirtualFileSystem,

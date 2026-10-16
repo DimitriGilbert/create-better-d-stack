@@ -89,20 +89,32 @@ for (const pkg of collectPackages()) {
 
 const crapReportsDir = path.join(repoRoot, "reports", "crap");
 const crapOffenders = [];
+// crap-score's CrapReportJsonObject: { [sourcePath]: { [functionName]: { statements: { crap } } } }
 if (existsSync(crapReportsDir)) {
   for (const file of readdirSync(crapReportsDir)) {
     if (!file.endsWith(".json")) continue;
     const report = readJson(path.join(crapReportsDir, file));
-    const entries = Array.isArray(report) ? report : (report?.functions ?? report?.files ?? []);
-    for (const entry of entries) {
-      const crap = Number(entry.crap ?? entry.crapScore ?? NaN);
-      if (Number.isFinite(crap) && crap >= CRAP_THRESHOLD) {
-        crapOffenders.push({
-          package: file.replace(/\.json$/, ""),
-          name: entry.name ?? entry.functionName ?? entry.file ?? "(unknown)",
-          crap,
-        });
+    if (!report) continue;
+    let parsed = 0;
+    for (const [sourcePath, functions] of Object.entries(report)) {
+      if (!functions) continue;
+      for (const [functionName, fn] of Object.entries(functions)) {
+        const crap = Number(fn?.statements?.crap);
+        if (!Number.isFinite(crap)) continue;
+        parsed += 1;
+        if (crap >= CRAP_THRESHOLD) {
+          crapOffenders.push({
+            package: file.replace(/\.json$/, ""),
+            name: `${functionName} (${sourcePath})`,
+            crap,
+          });
+        }
       }
+    }
+    if (parsed === 0 && Object.keys(report).length > 0) {
+      console.warn(
+        `crap report ${file} parsed zero functions — the report shape may have changed.`,
+      );
     }
   }
 }

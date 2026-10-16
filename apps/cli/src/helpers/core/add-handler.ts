@@ -4,6 +4,8 @@ import {
   EMBEDDED_TEMPLATES,
   processAddonTemplates,
   processAddonsDeps,
+  generateNxConfig,
+  generateTurboConfig,
   processNxConfig,
   processPackageConfigs,
   processPnpmWorkspaceConfig,
@@ -56,6 +58,9 @@ export interface AddResult {
   error?: string;
 }
 
+// Package manifests preloaded into the VFS so addon processors can modify
+// them. NOTE: "apps/cli/package.json" is added by WS-B (feat/cli-addon) per
+// the plan's conflict map — do not add it here.
 const ADD_PACKAGE_JSON_PATHS = [
   "package.json",
   "apps/server/package.json",
@@ -276,6 +281,51 @@ function refreshLefthookTemplate(vfs: VirtualFileSystem, config: ProjectConfig):
   if (!template) return;
 
   vfs.writeFile("lefthook.yml", processTemplateString(template, config));
+}
+
+const RUNNER_TEST_TASK_KEYS = ["test", "test:coverage", "test:e2e", "test:e2e:install"] as const;
+
+function mergeMissingTasks<TTask>(
+  existing: Record<string, TTask>,
+  generated: Record<string, TTask>,
+): boolean {
+  let changed = false;
+  for (const taskName of RUNNER_TEST_TASK_KEYS) {
+    const task = generated[taskName];
+    if (task !== undefined && !(taskName in existing)) {
+      existing[taskName] = task;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ * Merge only the testing task declarations into an existing runner config,
+ * preserving user edits. Returns false when the file is absent so callers can
+ * fall back to full regeneration.
+ */
+function mergeRunnerTestTasks(
+  vfs: VirtualFileSystem,
+  config: ProjectConfig,
+  runner: "turborepo" | "nx",
+): boolean {
+  if (runner === "turborepo") {
+    const existing = vfs.readJson<ReturnType<typeof generateTurboConfig>>("turbo.json");
+    if (!existing) return false;
+    existing.tasks ??= {};
+    if (mergeMissingTasks(existing.tasks, generateTurboConfig(config).tasks)) {
+      vfs.writeFile("turbo.json", JSON.stringify(existing, null, "\t"));
+    }
+    return true;
+  }
+  const existing = vfs.readJson<ReturnType<typeof generateNxConfig>>("nx.json");
+  if (!existing) return false;
+  existing.targetDefaults ??= {};
+  if (mergeMissingTasks(existing.targetDefaults, generateNxConfig(config).targetDefaults)) {
+    vfs.writeFile("nx.json", JSON.stringify(existing, null, "\t"));
+  }
+  return true;
 }
 
 function updateViteConfigImportsForVitePlus(vfs: VirtualFileSystem): void {
@@ -578,15 +628,22 @@ async function addHandlerInternal(
       (addon) => addon === "testing" || addon === "e2e-testing",
     );
 
-    if (
-      addonsToAdd.includes("turborepo") ||
-      (updatedAddons.includes("turborepo") && runnerAffecting)
-    ) {
+    if (addonsToAdd.includes("turborepo")) {
       processTurboConfig(vfs, updatedConfig);
+    } else if (updatedAddons.includes("turborepo") && runnerAffecting) {
+      // The runner is already installed — merge test tasks so user edits to
+      // turbo.json survive. Full regen only when the file is missing.
+      if (!mergeRunnerTestTasks(vfs, updatedConfig, "turborepo")) {
+        processTurboConfig(vfs, updatedConfig);
+      }
     }
 
-    if (addonsToAdd.includes("nx") || (updatedAddons.includes("nx") && runnerAffecting)) {
+    if (addonsToAdd.includes("nx")) {
       processNxConfig(vfs, updatedConfig);
+    } else if (updatedAddons.includes("nx") && runnerAffecting) {
+      if (!mergeRunnerTestTasks(vfs, updatedConfig, "nx")) {
+        processNxConfig(vfs, updatedConfig);
+      }
     }
 
     if (addonsToAdd.includes("vite-plus")) {

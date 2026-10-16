@@ -239,8 +239,11 @@ export async function getAddonsChoice(
   if (isCancel(response)) throw new UserCancelledError({ message: "Operation cancelled" });
 
   const resolved = resolveAddonDependencies(response);
-  if (resolved.length !== response.length) {
-    log.info("The Testing addon was added because Quality Metrics requires it");
+  const added = resolved.filter((addon) => !response.includes(addon));
+  if (added.length > 0) {
+    log.info(
+      `Added required addon${added.length > 1 ? "s" : ""}: ${added.join(", ")} (required by your addon selection)`,
+    );
   }
   return resolved;
 }

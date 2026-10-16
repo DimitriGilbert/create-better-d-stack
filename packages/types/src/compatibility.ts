@@ -103,10 +103,15 @@ export const ADDON_DEPENDENCIES = {
   "quality-metrics": ["testing"],
 } as const satisfies Partial<Record<Addons, readonly Addons[]>>;
 
+function hasAddonDependencies(addon: Addons): addon is keyof typeof ADDON_DEPENDENCIES {
+  return Object.hasOwn(ADDON_DEPENDENCIES, addon);
+}
+
 export function resolveAddonDependencies(addons: readonly Addons[]): Addons[] {
   const resolved = [...new Set(addons)];
   for (const addon of resolved) {
-    for (const dep of ADDON_DEPENDENCIES[addon as keyof typeof ADDON_DEPENDENCIES] ?? []) {
+    if (!hasAddonDependencies(addon)) continue;
+    for (const dep of ADDON_DEPENDENCIES[addon]) {
       if (!resolved.includes(dep)) resolved.push(dep);
     }
   }

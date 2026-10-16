@@ -1,4 +1,8 @@
 {
   "extends": "@{{projectName}}/config/tsconfig.base.json",
+  // Pinned so the suite typechecks identically regardless of project runtime —
+  // the base config emits "bun" for bun projects, which would demand @types/bun
+  // inside this package's isolated node_modules.
+  "compilerOptions": { "types": ["node"] },
   "include": ["e2e/**/*.ts", "playwright.config.ts"]
 }
