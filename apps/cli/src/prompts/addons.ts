@@ -116,7 +116,7 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
       break;
     case "shadcn-registry":
       label = "shadcn Registry";
-      hint = "Distribute packages/ui components via a shadcn registry (apps/web/public/r)";
+      hint = "Distribute a curated subset of packages/ui via a shadcn registry";
       break;
     default:
       label = addon;

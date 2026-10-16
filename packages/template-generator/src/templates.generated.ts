@@ -427,12 +427,11 @@ export default defineConfig({
       "type": "registry:lib",
       "title": "Utils",
       "description": "Shared utilities, including the cn() class-name helper.",
-      "dependencies": ["cn"],
+      "dependencies": ["cn@^0.2.5"],
       "files": [
         {
           "path": "registry/ui/utils.ts",
-          "type": "registry:lib",
-          "target": "lib/utils.ts"
+          "type": "registry:lib"
         }
       ]
     },
@@ -441,13 +440,14 @@ export default defineConfig({
       "type": "registry:ui",
       "title": "Button",
       "description": "A button component built on Base UI with CVA variants.",
-      "registryDependencies": ["utils"],
-      "dependencies": ["@base-ui/react", "class-variance-authority"],
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "dependencies": ["@base-ui/react@^1.8.0", "class-variance-authority@^0.7.1"],
       "files": [
         {
           "path": "registry/ui/button.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/button.tsx"
+          "type": "registry:ui"
         }
       ]
     },
@@ -456,12 +456,18 @@ export default defineConfig({
       "type": "registry:ui",
       "title": "Card",
       "description": "A card container with header, content, and footer slots.",
-      "registryDependencies": ["utils"],
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "css": {
+        "@utility cn-font-heading": {
+          "font-family": "var(--font-heading, inherit)"
+        }
+      },
       "files": [
         {
           "path": "registry/ui/card.tsx",
-          "type": "registry:ui",
-          "target": "components/ui/card.tsx"
+          "type": "registry:ui"
         }
       ]
     }
@@ -481,16 +487,35 @@ component and utility sources those items point at.
 {{#if (eq packageManager "npm")}}npx shadcn build registry.json --output apps/web/public/r{{else if (eq packageManager "pnpm")}}pnpm shadcn build registry.json --output apps/web/public/r{{else}}bunx shadcn build registry.json --output apps/web/public/r{{/if}}
 \`\`\`
 
-The root \`registry:build\` script runs the same command. It emits one
-\`<name>.json\` file per item into \`apps/web/public/r\`, which \`apps/web\`
-serves as static assets. Consumers then install items with:
+The root \`registry:build\` script runs the same command, and the root \`build\`
+script runs it before the app build — so every production build emits fresh
+item JSON. It writes one \`<name>.json\` file per item into
+\`apps/web/public/r\`, which \`apps/web\` serves as static assets. The output
+directory is gitignored because it is regenerated on every build; run
+\`registry:build\` by hand to preview items during development. Consumers then
+install items with:
 
 \`\`\`bash
 npx shadcn@latest add https://<your-host>/r/<name>.json
 \`\`\`
 
-The generated \`apps/web/public/r/\` output is gitignored — rebuild it as part
-of deployment.
+## Going to production
+
+\`registry.json\` ships with a local \`homepage\` and item
+\`registryDependencies\` that point at \`http://localhost:<port>/r/*.json\` —
+the same URL consumers will fetch to install items. Before deploying:
+
+1. Replace \`localhost:<port>\` in \`homepage\` **and in every
+   \`registryDependencies\` URL** with your public origin.
+2. Run \`registry:build\` (or just \`build\`) so the emitted items embed the
+   production URLs.
+
+Self-referencing URLs are required: a bare name like \`"utils"\` in
+\`registryDependencies\` resolves to the *official* shadcn registry, not to
+this registry's \`utils\` item. The generated items therefore depend on their
+own \`http://localhost:.../r/utils.json\` so consumers always get the \`cn()\`
+helper published here rather than a different implementation pulled from a
+third-party registry.
 
 ## Import specifiers
 
@@ -503,8 +528,10 @@ that every consumer's \`components.json\` already maps:
 
 Files under \`registry/ui/\` are thin copies of \`packages/ui\` sources with
 their workspace-scoped \`ui\` package imports rewritten to the specifiers
-above. When a component changes in \`packages/ui\`, update its copy here — or
-add a build step — so the registry does not drift.
+above. Keep the copies byte-identical to the originals apart from those
+import lines — a test enforces it. When a component changes in
+\`packages/ui\`, update its copy here — or add a build step — so the registry
+does not drift.
 
 ## Adding an item
 
@@ -517,13 +544,12 @@ add a build step — so the registry does not drift.
      "name": "my-component",
      "type": "registry:ui",
      "title": "My Component",
-     "registryDependencies": ["utils"],
-     "dependencies": ["<runtime deps the file imports>"],
+     "registryDependencies": ["http://localhost:<port>/r/utils.json"],
+     "dependencies": ["<runtime deps the file imports, name@range>"],
      "files": [
        {
          "path": "registry/ui/my-component.tsx",
-         "type": "registry:ui",
-         "target": "components/ui/my-component.tsx"
+         "type": "registry:ui"
        }
      ]
    }
@@ -533,14 +559,18 @@ add a build step — so the registry does not drift.
 
 Notes:
 
-- \`registryDependencies\` entries are item addresses, not file paths. A bare
-  name like \`"utils"\` resolves against the official shadcn registry — it does
-  not reference the \`utils\` item in this registry. The generated items rely
-  on the official \`utils\` item, which installs a \`cn()\` helper at the same
-  \`lib/utils.ts\` target.
-- Keep \`dependencies\` in sync with the file's actual imports — shadcn
-  installs them into the consumer project.
-- \`registry:file\` and \`registry:page\` files require an explicit \`target\`.
+- \`registryDependencies\` entries are item addresses: absolute URLs to this
+  registry's own items, \`@namespace/item\` for named registries, or
+  \`owner/repo/item\` for GitHub registries. Bare names only ever mean the
+  official shadcn registry — never use them for same-registry deps.
+- Omit \`target\` on \`registry:ui\`/\`registry:lib\` files so the consumer's
+  \`components.json\` aliases decide the install location. Only
+  \`registry:file\` and \`registry:page\` require an explicit \`target\`.
+- Keep \`dependencies\` in sync with the file's actual imports, pinned to the
+  same ranges \`packages/ui/package.json\` uses — shadcn installs them into
+  the consumer project.
+- The \`css\` field ships extra CSS (used here for \`cn-font-heading\`, a
+  theme utility the card title relies on).
 `],
   ["addons/shadcn-registry/registry/ui/button.tsx.hbs", `import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"

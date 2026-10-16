@@ -32,6 +32,14 @@ export async function processAddonTemplates(
       continue;
     }
 
+    if (addon === "shadcn-registry") {
+      // The registry curates packages/ui sources; skip projects without it.
+      if (vfs.exists("packages/ui/package.json")) {
+        processTemplatesFromPrefix(vfs, templates, "addons/shadcn-registry", "", config);
+      }
+      continue;
+    }
+
     processTemplatesFromPrefix(vfs, templates, `addons/${addon}`, "", config);
   }
 }

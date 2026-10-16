@@ -595,7 +595,7 @@ function generateFeaturesList(
     "vite-plus":
       "- **Vite+** - Unified Vite toolchain, workspace task runner, linting, and formatting",
     "shadcn-registry":
-      "- **shadcn Registry** - Distribute packages/ui components via a shadcn registry",
+      "- **shadcn Registry** - Distribute a curated subset of packages/ui via a shadcn registry",
   } satisfies Record<string, string>;
 
   for (const addon of addons) {

@@ -101,15 +101,21 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
     }
   }
 
-  if (config.addons.includes("shadcn-registry")) {
+  if (config.addons.includes("shadcn-registry") && vfs.exists("packages/ui/package.json")) {
     const rootPkgPath = "package.json";
     addPackageDependency({ vfs, packagePath: rootPkgPath, devDependencies: ["shadcn"] });
     const rootPkg = vfs.readJson<PackageJson>(rootPkgPath);
     if (rootPkg) {
-      rootPkg.scripts = {
-        ...rootPkg.scripts,
-        "registry:build": "shadcn build registry.json --output apps/web/public/r",
-      };
+      // shadcn resolves item file paths relative to its CWD, so the build must
+      // run from the project root. Prepending to the root `build` script keeps
+      // it runner-agnostic: whatever command orchestrates the app build runs
+      // after the registry output is emitted.
+      const registryBuild = "shadcn build registry.json --output apps/web/public/r";
+      rootPkg.scripts = { ...rootPkg.scripts, "registry:build": registryBuild };
+      const buildScript = rootPkg.scripts.build;
+      if (buildScript && !buildScript.includes("shadcn build")) {
+        rootPkg.scripts.build = `${registryBuild} && ${buildScript}`;
+      }
       vfs.writeJson(rootPkgPath, rootPkg);
     }
     appendGitignoreLines(vfs, ["# shadcn registry output", "apps/web/public/r/"]);

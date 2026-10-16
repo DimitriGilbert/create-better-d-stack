@@ -71,6 +71,7 @@ const ADD_PACKAGE_JSON_PATHS = [
 ];
 
 const ADD_TEXT_FILE_PATHS = [
+  ".gitignore",
   "pnpm-workspace.yaml",
   "apps/web/vite.config.ts",
   "apps/web/next.config.ts",
