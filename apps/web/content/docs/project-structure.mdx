@@ -429,7 +429,7 @@ Electrobun adds an `apps/desktop` workspace with its own `package.json`, `electr
 
 ### shadcn Registry (registry.json + registry/)
 
-The shadcn Registry addon writes a root `registry.json` — the source registry definition — plus a `registry/` directory with curated copies of `packages/ui` components whose imports use the `@/lib/utils` and `@/components/ui/*` specifiers that consumers' `components.json` resolves. The `registry:build` root script runs `shadcn build registry.json --output apps/web/public/r`, emitting one `<name>.json` per item under `apps/web/public/r/` (gitignored; rebuilt on deploy). It requires a React web frontend (`tanstack-router`, `react-router`, `tanstack-start`, or `next`).
+The shadcn Registry addon writes a root `registry.json` — the source registry definition — plus a `registry/` directory with curated copies of a subset of `packages/ui` sources (`utils`, `button`, `card`) whose imports use the `@/lib/utils` and `@/components/ui/*` specifiers that consumers' `components.json` resolves. The `registry:build` root script runs `shadcn build registry.json --output apps/web/public/r`, and the root `build` script runs it first, so every production build emits one `<name>.json` per item under `apps/web/public/r/` (gitignored; rebuilt on deploy). It requires a React web frontend (`tanstack-router`, `react-router`, `tanstack-start`, or `next`).
 
 ## Configuration Files
 

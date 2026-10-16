@@ -695,7 +695,7 @@ export const TECH_OPTIONS: TechOptions = {
     {
       id: "shadcn-registry",
       name: "shadcn Registry",
-      description: "Distribute packages/ui components via a shadcn registry",
+      description: "Distribute a curated subset of packages/ui via a shadcn registry",
       icon: "",
       color: "from-neutral-500 to-neutral-700",
       default: false,
