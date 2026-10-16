@@ -93,6 +93,7 @@ export const ADDON_COMPATIBILITY = {
   skills: [],
   evlog: [],
   axiom: [],
+  "shadcn-registry": ["tanstack-router", "react-router", "tanstack-start", "next"],
   none: [],
 } as const;
 

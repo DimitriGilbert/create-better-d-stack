@@ -1,0 +1,73 @@
+# Component Registry
+
+This directory holds the source files for this project's
+[shadcn registry](https://ui.shadcn.com/docs/registry). The root
+`registry.json` declares the installable items; `registry/ui/` holds the
+component and utility sources those items point at.
+
+## Build
+
+```bash
+{{#if (eq packageManager "npm")}}npx shadcn build registry.json --output apps/web/public/r{{else if (eq packageManager "pnpm")}}pnpm shadcn build registry.json --output apps/web/public/r{{else}}bunx shadcn build registry.json --output apps/web/public/r{{/if}}
+```
+
+The root `registry:build` script runs the same command. It emits one
+`<name>.json` file per item into `apps/web/public/r`, which `apps/web`
+serves as static assets. Consumers then install items with:
+
+```bash
+npx shadcn@latest add https://<your-host>/r/<name>.json
+```
+
+The generated `apps/web/public/r/` output is gitignored — rebuild it as part
+of deployment.
+
+## Import specifiers
+
+Registry sources are copied verbatim into consumer projects, so they must not
+import from this monorepo's workspace packages. Use the shadcn conventions
+that every consumer's `components.json` already maps:
+
+- `@/lib/utils` — utilities (`cn`)
+- `@/components/ui/<name>` — other registry components
+
+Files under `registry/ui/` are thin copies of `packages/ui` sources with
+their workspace-scoped `ui` package imports rewritten to the specifiers
+above. When a component changes in `packages/ui`, update its copy here — or
+add a build step — so the registry does not drift.
+
+## Adding an item
+
+1. Copy the component source into `registry/ui/` and rewrite internal
+   imports to `@/lib/utils` / `@/components/ui/*` specifiers.
+2. Declare the item in `registry.json`:
+
+   ```json
+   {
+     "name": "my-component",
+     "type": "registry:ui",
+     "title": "My Component",
+     "registryDependencies": ["utils"],
+     "dependencies": ["<runtime deps the file imports>"],
+     "files": [
+       {
+         "path": "registry/ui/my-component.tsx",
+         "type": "registry:ui",
+         "target": "components/ui/my-component.tsx"
+       }
+     ]
+   }
+   ```
+
+3. Run `registry:build` and check the emitted item JSON.
+
+Notes:
+
+- `registryDependencies` entries are item addresses, not file paths. A bare
+  name like `"utils"` resolves against the official shadcn registry — it does
+  not reference the `utils` item in this registry. The generated items rely
+  on the official `utils` item, which installs a `cn()` helper at the same
+  `lib/utils.ts` target.
+- Keep `dependencies` in sync with the file's actual imports — shadcn
+  installs them into the consumer project.
+- `registry:file` and `registry:page` files require an explicit `target`.

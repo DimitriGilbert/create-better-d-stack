@@ -54,6 +54,7 @@ export const AddonsSchema = z
     "skills",
     "evlog",
     "axiom",
+    "shadcn-registry",
     "none",
   ])
   .describe("Additional addons");
