@@ -72,6 +72,7 @@ const ADD_PACKAGE_JSON_PATHS = [
 ];
 
 const ADD_TEXT_FILE_PATHS = [
+  ".gitignore",
   "pnpm-workspace.yaml",
   "packages/config/vitest/base.ts",
   "apps/web/vite.config.ts",

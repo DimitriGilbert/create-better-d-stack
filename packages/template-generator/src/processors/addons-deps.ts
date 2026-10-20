@@ -13,6 +13,17 @@ type PackageJson = {
   [key: string]: JsonValue | undefined;
 };
 
+function appendGitignoreLines(vfs: VirtualFileSystem, lines: string[]): void {
+  const gitignore = vfs.readFile(".gitignore");
+  if (gitignore === undefined) return;
+
+  const existing = new Set(gitignore.split("\n").map((line) => line.trim()));
+  const additions = lines.filter((line) => !existing.has(line));
+  if (additions.length === 0) return;
+
+  vfs.writeFile(".gitignore", `${gitignore.trimEnd()}\n\n${additions.join("\n")}\n`);
+}
+
 export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig): void {
   if (!config.addons || config.addons.length === 0) return;
 
@@ -127,5 +138,25 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
         }
       }
     }
+  }
+
+  if (config.addons.includes("shadcn-registry") && vfs.exists("packages/ui/package.json")) {
+    const rootPkgPath = "package.json";
+    addPackageDependency({ vfs, packagePath: rootPkgPath, devDependencies: ["shadcn"] });
+    const rootPkg = vfs.readJson<PackageJson>(rootPkgPath);
+    if (rootPkg) {
+      // shadcn resolves item file paths relative to its CWD, so the build must
+      // run from the project root. Prepending to the root `build` script keeps
+      // it runner-agnostic: whatever command orchestrates the app build runs
+      // after the registry output is emitted.
+      const registryBuild = "shadcn build registry.json --output apps/web/public/r";
+      rootPkg.scripts = { ...rootPkg.scripts, "registry:build": registryBuild };
+      const buildScript = rootPkg.scripts.build;
+      if (buildScript && !buildScript.includes("shadcn build")) {
+        rootPkg.scripts.build = `${registryBuild} && ${buildScript}`;
+      }
+      vfs.writeJson(rootPkgPath, rootPkg);
+    }
+    appendGitignoreLines(vfs, ["# shadcn registry output", "apps/web/public/r/"]);
   }
 }

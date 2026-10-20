@@ -28,7 +28,7 @@ For brand-new projects, use the **scaffold-project** skill instead.
 
 ## Available addons
 
-`pwa`, `tauri`, `electrobun`, `starlight`, `biome`, `lefthook`, `husky`, `mcp`, `turborepo`, `nx`, `vite-plus`, `fumadocs`, `ultracite`, `oxlint`, `opentui`, `wxt`, `skills`, `evlog`, `cli`.
+`pwa`, `tauri`, `electrobun`, `starlight`, `biome`, `lefthook`, `husky`, `mcp`, `turborepo`, `nx`, `vite-plus`, `fumadocs`, `ultracite`, `oxlint`, `opentui`, `wxt`, `skills`, `evlog`, `cli`, `shadcn-registry`.
 
 Note: `nx`, `turborepo`, and `vite-plus` are mutually exclusive task runners. Use `bts_get_schema` for nested addon options (e.g. Fumadocs templates/search/AI chat, WXT templates, OpenTUI templates).
 

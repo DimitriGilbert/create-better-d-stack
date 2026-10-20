@@ -186,6 +186,12 @@ served over HTTPS (or localhost), rather than relying on the development server.
 - Desktop builds package static web output, so `tanstack-start`, `next`, `nuxt`, `svelte`, and `astro` need static/export configuration before packaging
 - Not compatible with `--backend self`, because fullstack self backends emit server routes inside `apps/web`
 
+### shadcn Registry
+
+- Requires a React web frontend — the ones that generate `packages/ui`: `tanstack-router`, `react-router`, `tanstack-start`, `next`
+- Not compatible with Nuxt, Svelte, Solid, Astro, or native-only projects
+- Writes a root `registry.json` and `registry/` sources; `registry:build` emits installable items to `apps/web/public/r`
+
 ### Task Runners
 
 - `nx`, `turborepo`, and `vite-plus` are mutually exclusive — only one can be selected per project

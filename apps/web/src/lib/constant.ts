@@ -700,6 +700,14 @@ export const TECH_OPTIONS: TechOptions = {
       color: "from-emerald-500 to-teal-700",
       default: false,
     },
+    {
+      id: "shadcn-registry",
+      name: "shadcn Registry",
+      description: "Distribute a curated subset of packages/ui via a shadcn registry",
+      icon: "",
+      color: "from-neutral-500 to-neutral-700",
+      default: false,
+    },
   ],
   examples: [
     {

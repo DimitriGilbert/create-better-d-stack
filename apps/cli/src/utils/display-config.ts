@@ -74,6 +74,7 @@ const VALUE_LABELS = {
   evlog: "evlog",
   axiom: "Axiom",
   cli: "CLI app",
+  "shadcn-registry": "shadcn registry",
   todo: "Todo app",
   ai: "AI chat",
   turso: "Turso",

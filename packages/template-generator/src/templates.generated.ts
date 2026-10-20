@@ -580,6 +580,324 @@ export default defineConfig({
   images: ["public/logo.png"],
 });
 `],
+  ["addons/shadcn-registry/registry.json.hbs", `{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "{{projectName}}",
+  "homepage": "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}",
+  "items": [
+    {
+      "name": "utils",
+      "type": "registry:lib",
+      "title": "Utils",
+      "description": "Shared utilities, including the cn() class-name helper.",
+      "dependencies": ["cn@^0.2.5"],
+      "files": [
+        {
+          "path": "registry/ui/utils.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "A button component built on Base UI with CVA variants.",
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "dependencies": ["@base-ui/react@^1.8.0", "class-variance-authority@^0.7.1"],
+      "files": [
+        {
+          "path": "registry/ui/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "type": "registry:ui",
+      "title": "Card",
+      "description": "A card container with header, content, and footer slots.",
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "css": {
+        "@utility cn-font-heading": {
+          "font-family": "var(--font-heading, inherit)"
+        }
+      },
+      "files": [
+        {
+          "path": "registry/ui/card.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}
+`],
+  ["addons/shadcn-registry/registry/README.md.hbs", `# Component Registry
+
+This directory holds the source files for this project's
+[shadcn registry](https://ui.shadcn.com/docs/registry). The root
+\`registry.json\` declares the installable items; \`registry/ui/\` holds the
+component and utility sources those items point at.
+
+## Build
+
+\`\`\`bash
+{{#if (eq packageManager "npm")}}npx shadcn build registry.json --output apps/web/public/r{{else if (eq packageManager "pnpm")}}pnpm shadcn build registry.json --output apps/web/public/r{{else}}bunx shadcn build registry.json --output apps/web/public/r{{/if}}
+\`\`\`
+
+The root \`registry:build\` script runs the same command, and the root \`build\`
+script runs it before the app build — so every production build emits fresh
+item JSON. It writes one \`<name>.json\` file per item into
+\`apps/web/public/r\`, which \`apps/web\` serves as static assets. The output
+directory is gitignored because it is regenerated on every build; run
+\`registry:build\` by hand to preview items during development. Consumers then
+install items with:
+
+\`\`\`bash
+npx shadcn@latest add https://<your-host>/r/<name>.json
+\`\`\`
+
+## Going to production
+
+\`registry.json\` ships with a local \`homepage\` and item
+\`registryDependencies\` that point at \`http://localhost:<port>/r/*.json\` —
+the same URL consumers will fetch to install items. Before deploying:
+
+1. Replace \`localhost:<port>\` in \`homepage\` **and in every
+   \`registryDependencies\` URL** with your public origin.
+2. Run \`registry:build\` (or just \`build\`) so the emitted items embed the
+   production URLs.
+
+Self-referencing URLs are required: a bare name like \`"utils"\` in
+\`registryDependencies\` resolves to the *official* shadcn registry, not to
+this registry's \`utils\` item. The generated items therefore depend on their
+own \`http://localhost:.../r/utils.json\` so consumers always get the \`cn()\`
+helper published here rather than a different implementation pulled from a
+third-party registry.
+
+## Import specifiers
+
+Registry sources are copied verbatim into consumer projects, so they must not
+import from this monorepo's workspace packages. Use the shadcn conventions
+that every consumer's \`components.json\` already maps:
+
+- \`@/lib/utils\` — utilities (\`cn\`)
+- \`@/components/ui/<name>\` — other registry components
+
+Files under \`registry/ui/\` are thin copies of \`packages/ui\` sources with
+their workspace-scoped \`ui\` package imports rewritten to the specifiers
+above. Keep the copies byte-identical to the originals apart from those
+import lines — a test enforces it. When a component changes in
+\`packages/ui\`, update its copy here — or add a build step — so the registry
+does not drift.
+
+## Adding an item
+
+1. Copy the component source into \`registry/ui/\` and rewrite internal
+   imports to \`@/lib/utils\` / \`@/components/ui/*\` specifiers.
+2. Declare the item in \`registry.json\`:
+
+   \`\`\`json
+   {
+     "name": "my-component",
+     "type": "registry:ui",
+     "title": "My Component",
+     "registryDependencies": ["http://localhost:<port>/r/utils.json"],
+     "dependencies": ["<runtime deps the file imports, name@range>"],
+     "files": [
+       {
+         "path": "registry/ui/my-component.tsx",
+         "type": "registry:ui"
+       }
+     ]
+   }
+   \`\`\`
+
+3. Run \`registry:build\` and check the emitted item JSON.
+
+Notes:
+
+- \`registryDependencies\` entries are item addresses: absolute URLs to this
+  registry's own items, \`@namespace/item\` for named registries, or
+  \`owner/repo/item\` for GitHub registries. Bare names only ever mean the
+  official shadcn registry — never use them for same-registry deps.
+- Omit \`target\` on \`registry:ui\`/\`registry:lib\` files so the consumer's
+  \`components.json\` aliases decide the install location. Only
+  \`registry:file\` and \`registry:page\` require an explicit \`target\`.
+- Keep \`dependencies\` in sync with the file's actual imports, pinned to the
+  same ranges \`packages/ui/package.json\` uses — shadcn installs them into
+  the consumer project.
+- The \`css\` field ships extra CSS (used here for \`cn-font-heading\`, a
+  theme utility the card title relies on).
+`],
+  ["addons/shadcn-registry/registry/ui/button.tsx.hbs", `import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-none border border-transparent bg-clip-padding text-xs font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-none px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-none px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs": "size-6 rounded-none [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-7 rounded-none",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+`],
+  ["addons/shadcn-registry/registry/ui/card.tsx.hbs", `import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({
+  className,
+  size = "default",
+  ...props
+}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+  return (
+    <div
+      data-slot="card"
+      data-size={size}
+      className={cn(
+        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-none bg-card py-(--card-spacing) text-xs/relaxed text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-none *:[img:last-child]:rounded-none",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-none px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn(
+        "cn-font-heading text-sm font-medium group-data-[size=sm]/card:text-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-xs/relaxed text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-(--card-spacing)", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn(
+        "flex items-center rounded-none border-t p-(--card-spacing)",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+`],
+  ["addons/shadcn-registry/registry/ui/utils.ts.hbs", `export { cn } from "cn";
+`],
   ["api/orpc/context.ts.hbs", `import type { Context as ApiContext } from "@{{projectName}}/api/context";
 {{#if (ne database "none")}}
 import { {{#if (or (eq runtime "workers") (eq serverDeploy "cloudflare") (and (eq backend "self") (eq webDeploy "cloudflare")))}}getDb{{else}}db{{/if}} } from "@{{projectName}}/app-services";
@@ -35798,4 +36116,4 @@ export default function Success() {
 `]
 ]);
 
-export const TEMPLATE_COUNT = 538;
+export const TEMPLATE_COUNT = 543;

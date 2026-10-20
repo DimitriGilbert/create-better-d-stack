@@ -118,6 +118,10 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
       label = "CLI";
       hint = "Commander-based command-line app in apps/cli, wired into the workspace";
       break;
+    case "shadcn-registry":
+      label = "shadcn Registry";
+      hint = "Distribute a curated subset of packages/ui via a shadcn registry";
+      break;
     default:
       label = addon;
       hint = `Add ${addon}`;
@@ -130,7 +134,7 @@ const ADDON_GROUPS = {
   "Monorepo & Tasks": ["turborepo", "nx", "vite-plus"],
   "Code Quality": ["biome", "oxlint", "ultracite", "husky", "lefthook"],
   Documentation: ["starlight", "fumadocs"],
-  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt", "cli"],
+  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt", "cli", "shadcn-registry"],
   Observability: ["evlog", "axiom"],
   "AI & Agent Tools": ["skills", "mcp"],
 };

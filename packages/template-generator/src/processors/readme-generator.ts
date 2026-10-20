@@ -599,6 +599,8 @@ function generateFeaturesList(
     nx: "- **Nx** - Smart monorepo task orchestration and caching",
     "vite-plus":
       "- **Vite+** - Unified Vite toolchain, workspace task runner, linting, and formatting",
+    "shadcn-registry":
+      "- **shadcn Registry** - Distribute a curated subset of packages/ui via a shadcn registry",
   } satisfies Record<string, string>;
 
   for (const addon of addons) {
@@ -859,6 +861,10 @@ function generateScriptsList(
     const argSep = packageManagerRunCmd === "npm run" ? " --" : "";
     scripts += `\n- \`cd apps/cli && ${packageManagerRunCmd} dev${argSep} info\`: Run the CLI in development (tsx)
 - \`cd apps/cli && ${packageManagerRunCmd} build\`: Build the CLI to dist/index.mjs`;
+  }
+
+  if (addons.includes("shadcn-registry")) {
+    scripts += `\n- \`${packageManagerRunCmd} registry:build\`: Build the shadcn registry into apps/web/public/r`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {
