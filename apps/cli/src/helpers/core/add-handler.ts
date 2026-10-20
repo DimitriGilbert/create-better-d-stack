@@ -58,6 +58,7 @@ const ADD_PACKAGE_JSON_PATHS = [
   "apps/web/package.json",
   "apps/native/package.json",
   "apps/desktop/package.json",
+  "apps/cli/package.json",
   "apps/fumadocs/package.json",
   "apps/docs/package.json",
   "packages/api/package.json",
@@ -72,6 +73,7 @@ const ADD_PACKAGE_JSON_PATHS = [
 
 const ADD_TEXT_FILE_PATHS = [
   "pnpm-workspace.yaml",
+  "packages/config/vitest/base.ts",
   "apps/web/vite.config.ts",
   "apps/web/next.config.ts",
   "apps/web/src/Document.tsx",
@@ -576,7 +578,9 @@ async function addHandlerInternal(
       (TASK_RUNNER_ADDONS as readonly Addons[]).includes(addon),
     );
 
-    if (hasTaskRunner || addonsToAdd.includes("electrobun")) {
+    // `cli` needs the root workspaces globs refreshed too (convex + no
+    // frontend omits "apps/*" until updateRootPackageJson re-runs).
+    if (hasTaskRunner || addonsToAdd.includes("electrobun") || addonsToAdd.includes("cli")) {
       const existingNames = new Map(
         ADD_PACKAGE_JSON_PATHS.map((filePath) => [
           filePath,

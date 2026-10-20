@@ -100,6 +100,169 @@ export const EMBEDDED_TEMPLATES: Map<string, string> = new Map([
 	{{/if}}
 }
 `],
+  ["addons/cli/apps/cli/package.json.hbs", `{
+  "name": "cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "{{projectName}}": "./dist/index.mjs"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
+`],
+  ["addons/cli/apps/cli/README.md.hbs", `# {{projectName}} — CLI
+
+Commander-based command-line interface for this workspace.
+
+> **Requires Node.js ≥ 22.12** — the CLI is built on Commander 15, which is
+> ESM-only and sets that engine floor.
+
+## Usage
+
+During development, run commands through \`tsx\`:
+
+\`\`\`sh
+{{#if (eq packageManager "pnpm")}}pnpm --filter cli dev info{{else if (eq packageManager "npm")}}npm run dev --workspace cli -- info{{else}}bun run --filter cli dev info{{/if}}
+\`\`\`
+
+Or build the distributable entry point and run it directly:
+
+\`\`\`sh
+{{#if (eq packageManager "pnpm")}}pnpm --filter cli build{{else if (eq packageManager "npm")}}npm run build --workspace cli{{else}}bun run --filter cli build{{/if}}
+node apps/cli/dist/index.mjs --help
+\`\`\`
+
+The \`bin\` field links \`{{projectName}}\` into \`node_modules/.bin\` — it points at
+\`dist/index.mjs\`, so run the build first, then invoke it through your package
+manager's exec command:
+
+\`\`\`sh
+{{#if (eq packageManager "pnpm")}}pnpm exec {{projectName}} --help{{else if (eq packageManager "npm")}}npx {{projectName}} --help{{else}}bun x {{projectName}} --help{{/if}}
+\`\`\`
+
+## Commands
+
+- \`--help\` — list all commands.
+- \`info\` — print the stack this project was generated with.
+- \`health\` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to \`http://localhost:3000\`; override with \`CLI_HEALTH_URL\` (or \`SERVER_URL\`).{{else if (eq backend "self")}} Defaults to the web dev server URL; override with \`CLI_HEALTH_URL\` (or \`SERVER_URL\`).{{/if}}
+
+Environment variables are read from the process environment — the CLI does not
+load dotenv files itself.
+
+## Layout
+
+- \`src/index.ts\` — program entry point (\`Command\` setup, shebang).
+- \`src/commands/\` — one file per command.
+- \`tsdown.config.ts\` — bundles \`src/index.ts\` to \`dist/index.mjs\`
+  (the shebang is preserved and the output stays executable).
+
+## Extending
+
+Create a new file in \`src/commands/\` exporting a \`Command\`, then register it in
+\`src/index.ts\` with \`program.addCommand(...)\`.
+`],
+  ["addons/cli/apps/cli/src/commands/health.ts.hbs", `import { Command } from "commander";
+
+{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}}
+// The CLI does not load dotenv — export these in your shell (or .env loader of choice).
+// SERVER_URL is honored as a fallback for consistency with the rest of the project.
+const serverUrl =
+  process.env.CLI_HEALTH_URL ?? process.env.SERVER_URL ?? "http://localhost:3000";
+{{else if (eq backend "self")}}
+const serverUrl =
+  process.env.CLI_HEALTH_URL ??
+  process.env.SERVER_URL ??
+  "{{#if (includes frontend "svelte")}}http://localhost:5173{{else if (includes frontend "astro")}}http://localhost:4321{{else}}http://localhost:3001{{/if}}";
+{{/if}}
+
+export const healthCommand = new Command("health")
+  .description("Check that the app server is reachable (override with CLI_HEALTH_URL)")
+  .action(async () => {
+    {{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia") (eq backend "self"))}}
+    const baseUrl = serverUrl.replace(/\\/+$/, "");
+    try {
+      const response = await fetch(\`\${baseUrl}/\`);
+      if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
+      console.log(\`OK — \${baseUrl}\`);
+    } catch (error) {
+      console.error(\`FAIL — \${baseUrl}:\`, error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
+    {{else}}
+    console.log("No HTTP backend configured for this project.");
+    {{/if}}
+  });
+`],
+  ["addons/cli/apps/cli/src/index.ts.hbs", `#!/usr/bin/env node
+import { Command } from "commander";
+
+import { healthCommand } from "./commands/health";
+
+const program = new Command();
+
+program
+  .name("{{projectName}}")
+  .description("Command-line interface for {{projectName}}")
+  .version("0.0.0");
+
+program.addCommand(healthCommand);
+
+program
+  .command("info")
+  .description("Print information about this project")
+  .action(() => {
+    const stack: Record<string, string> = {
+      frontend: "{{frontend}}",
+      backend: "{{backend}}",
+      database: "{{database}}",
+      orm: "{{orm}}",
+      api: "{{api}}",
+      auth: "{{auth}}",
+      runtime: "{{runtime}}",
+      packageManager: "{{packageManager}}",
+    };
+    for (const [key, value] of Object.entries(stack)) {
+      console.log(\`\${key.padEnd(14)} \${value}\`);
+    }
+  });
+
+// Bare invocation prints help and exits 0, so workspace \`dev\` aggregates
+// (turbo run dev / -r dev / --filter '*' dev) don't abort on this package.
+program.action(() => {
+  program.outputHelp();
+});
+
+program.parse();
+`],
+  ["addons/cli/apps/cli/tsconfig.json.hbs", `{
+  "extends": "@{{projectName}}/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "tsdown.config.ts"]
+}
+`],
+  ["addons/cli/apps/cli/tsdown.config.ts.hbs", `import { defineConfig } from "tsdown";
+
+export default defineConfig({
+  entry: "./src/index.ts",
+  format: "esm",
+  outDir: "./dist",
+  clean: true,
+  deps: {
+    alwaysBundle: [/@{{projectName}}\\/.*/],
+  },
+});
+`],
   ["addons/electrobun/apps/desktop/.gitignore", `.hutch/
 /artifacts/
 /build/
@@ -35635,4 +35798,4 @@ export default function Success() {
 `]
 ]);
 
-export const TEMPLATE_COUNT = 532;
+export const TEMPLATE_COUNT = 538;

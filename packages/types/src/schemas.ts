@@ -54,6 +54,7 @@ export const AddonsSchema = z
     "skills",
     "evlog",
     "axiom",
+    "cli",
     "none",
   ])
   .describe("Additional addons");

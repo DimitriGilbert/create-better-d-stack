@@ -93,6 +93,7 @@ export const ADDON_COMPATIBILITY = {
   skills: [],
   evlog: [],
   axiom: [],
+  cli: [],
   none: [],
 } as const;
 

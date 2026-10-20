@@ -93,6 +93,10 @@ export function getStackGeneratedIgnorePatterns(config: ProjectConfig): string[]
     patterns.add(".alchemy/**");
   }
 
+  if (config.addons.includes("cli")) {
+    patterns.add("apps/cli/dist/**");
+  }
+
   if (config.webDeploy === "vercel" || config.serverDeploy === "vercel") {
     patterns.add(".vercel/**");
   }

@@ -1,0 +1,50 @@
+# {{projectName}} — CLI
+
+Commander-based command-line interface for this workspace.
+
+> **Requires Node.js ≥ 22.12** — the CLI is built on Commander 15, which is
+> ESM-only and sets that engine floor.
+
+## Usage
+
+During development, run commands through `tsx`:
+
+```sh
+{{#if (eq packageManager "pnpm")}}pnpm --filter cli dev info{{else if (eq packageManager "npm")}}npm run dev --workspace cli -- info{{else}}bun run --filter cli dev info{{/if}}
+```
+
+Or build the distributable entry point and run it directly:
+
+```sh
+{{#if (eq packageManager "pnpm")}}pnpm --filter cli build{{else if (eq packageManager "npm")}}npm run build --workspace cli{{else}}bun run --filter cli build{{/if}}
+node apps/cli/dist/index.mjs --help
+```
+
+The `bin` field links `{{projectName}}` into `node_modules/.bin` — it points at
+`dist/index.mjs`, so run the build first, then invoke it through your package
+manager's exec command:
+
+```sh
+{{#if (eq packageManager "pnpm")}}pnpm exec {{projectName}} --help{{else if (eq packageManager "npm")}}npx {{projectName}} --help{{else}}bun x {{projectName}} --help{{/if}}
+```
+
+## Commands
+
+- `--help` — list all commands.
+- `info` — print the stack this project was generated with.
+- `health` — check that the app server is reachable.{{#if (or (eq backend "hono") (eq backend "express") (eq backend "fastify") (eq backend "elysia"))}} Defaults to `http://localhost:3000`; override with `CLI_HEALTH_URL` (or `SERVER_URL`).{{else if (eq backend "self")}} Defaults to the web dev server URL; override with `CLI_HEALTH_URL` (or `SERVER_URL`).{{/if}}
+
+Environment variables are read from the process environment — the CLI does not
+load dotenv files itself.
+
+## Layout
+
+- `src/index.ts` — program entry point (`Command` setup, shebang).
+- `src/commands/` — one file per command.
+- `tsdown.config.ts` — bundles `src/index.ts` to `dist/index.mjs`
+  (the shebang is preserved and the output stays executable).
+
+## Extending
+
+Create a new file in `src/commands/` exporting a `Command`, then register it in
+`src/index.ts` with `program.addCommand(...)`.
