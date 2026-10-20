@@ -39,6 +39,7 @@ const PACKAGE_PATHS = [
   "apps/native",
   "apps/desktop",
   "apps/cli",
+  "apps/e2e",
   "apps/fumadocs",
   "apps/docs",
   "packages/api",

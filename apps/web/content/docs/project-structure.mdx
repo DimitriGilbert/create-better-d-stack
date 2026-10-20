@@ -436,6 +436,18 @@ Electrobun adds an `apps/desktop` workspace with its own `package.json`, `electr
 
 The shadcn Registry addon writes a root `registry.json` — the source registry definition — plus a `registry/` directory with curated copies of a subset of `packages/ui` sources (`utils`, `button`, `card`) whose imports use the `@/lib/utils` and `@/components/ui/*` specifiers that consumers' `components.json` resolves. The `registry:build` root script runs `shadcn build registry.json --output apps/web/public/r`, and the root `build` script runs it first, so every production build emits one `<name>.json` per item under `apps/web/public/r/` (gitignored; rebuilt on deploy). It requires a React web frontend (`tanstack-router`, `react-router`, `tanstack-start`, or `next`).
 
+### Testing addon
+
+The `testing` addon adds a shared Vitest config factory at `packages/config/vitest/` (`createTestConfig` plus a setup file that forbids live network calls) and a `vitest.config.ts` + smoke test in every workspace package, with `test`/`test:coverage` scripts wired to the task runner or package manager.
+
+### E2E Testing addon (apps/e2e)
+
+The `e2e-testing` addon adds an `apps/e2e` workspace with a Playwright suite: `e2e/web.spec.ts` when a web frontend exists and `e2e/api.spec.ts` when an HTTP backend exists. `playwright.config.ts` boots the `dev:web`/`dev:server` root scripts automatically; `E2E_WEB_URL` and `E2E_API_URL` override the base URLs. The package deliberately uses a `test:e2e` script so workspace-wide `test` runs never pick up browser specs.
+
+### Quality Metrics addon
+
+The `quality-metrics` addon (requires `testing`) adds `jscpd.config.json`, `knip.json`, and `scripts/quality-*.mjs`, plus root `quality`/`quality:*` scripts that write reports under `reports/` (gitignored).
+
 ## Configuration Files
 
 ### Better-T-Stack Config (bts.jsonc)
@@ -450,7 +462,7 @@ The shadcn Registry addon writes a root `registry.json` — the source registry 
   "backend": "<none|hono|express|fastify|elysia|convex|self>",
   "runtime": "<bun|node|workers|none>",
   "frontend": ["<tanstack-router|react-router|tanstack-start|next|nuxt|svelte|solid|astro|native-bare|native-uniwind|native-unistyles|none>"] ,
-  "addons": ["<pwa|tauri|electrobun|starlight|fumadocs|biome|lefthook|husky|mcp|turborepo|nx|vite-plus|ultracite|oxlint|opentui|wxt|skills|evlog|axiom|cli|shadcn-registry|none>"] ,
+  "addons": ["<pwa|tauri|electrobun|starlight|fumadocs|biome|lefthook|husky|mcp|turborepo|nx|vite-plus|ultracite|oxlint|opentui|wxt|skills|evlog|axiom|cli|shadcn-registry|testing|e2e-testing|quality-metrics|none>"] ,
   "examples": ["<ai|todo|none>"] ,
   "auth": <"better-auth"|"clerk"|"none">,
   "packageManager": "<bun|pnpm|npm>",

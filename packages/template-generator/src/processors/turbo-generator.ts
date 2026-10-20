@@ -99,7 +99,7 @@ function getBaseTasks(frontend: string[], addons: string[]): TurboTasks {
     buildOutputs.push("artifacts/**");
   }
 
-  return {
+  const tasks: TurboTasks = {
     build: {
       dependsOn: ["^build"],
       inputs: ["$TURBO_DEFAULT$", ".env*"],
@@ -116,6 +116,24 @@ function getBaseTasks(frontend: string[], addons: string[]): TurboTasks {
       persistent: true,
     },
   };
+
+  // `turbo run <script>` errors on undeclared tasks — declare them when the
+  // testing addons add per-package test scripts.
+  if (addons.includes("testing")) {
+    tasks.test = { inputs: ["$TURBO_DEFAULT$", ".env*"] };
+    tasks["test:coverage"] = {
+      cache: false,
+      outputs: ["coverage/**"],
+      inputs: ["$TURBO_DEFAULT$", ".env*"],
+    };
+  }
+
+  if (addons.includes("e2e-testing")) {
+    tasks["test:e2e"] = { cache: false };
+    tasks["test:e2e:install"] = { cache: false };
+  }
+
+  return tasks;
 }
 
 function getElectrobunTasks(): TurboTasks {

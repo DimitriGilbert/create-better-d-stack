@@ -101,6 +101,19 @@ export function getStackGeneratedIgnorePatterns(config: ProjectConfig): string[]
     patterns.add("apps/web/public/r/**");
   }
 
+  if (config.addons.includes("testing")) {
+    patterns.add("**/coverage/**");
+  }
+
+  if (config.addons.includes("e2e-testing")) {
+    patterns.add("apps/e2e/playwright-report/**");
+    patterns.add("apps/e2e/test-results/**");
+  }
+
+  if (config.addons.includes("quality-metrics")) {
+    patterns.add("reports/**");
+  }
+
   if (config.webDeploy === "vercel" || config.serverDeploy === "vercel") {
     patterns.add(".vercel/**");
   }

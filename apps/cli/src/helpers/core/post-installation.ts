@@ -2,6 +2,7 @@ import { box, log } from "@clack/prompts";
 import pc from "picocolors";
 
 import type {
+  Addons,
   Backend,
   Database,
   DatabaseSetup,
@@ -108,6 +109,7 @@ export async function displayPostInstallInstructions(
     ? getVitePlusNativeHooksInstructions(runCmd)
     : "";
   const lintingInstructions = hasGitHooksOrLinting ? getLintingInstructions(runCmd) : "";
+  const testingInstructions = getTestingAddonsInstructions(runCmd, addons || []);
   const nativeInstructions =
     (frontend?.includes("native-bare") ||
       frontend?.includes("native-uniwind") ||
@@ -277,6 +279,7 @@ export async function displayPostInstallInstructions(
   if (lefthookInstructions) output += `\n${lefthookInstructions.trim()}\n`;
   if (vitePlusNativeHooksInstructions) output += `\n${vitePlusNativeHooksInstructions.trim()}\n`;
   if (lintingInstructions) output += `\n${lintingInstructions.trim()}\n`;
+  if (testingInstructions) output += `\n${testingInstructions.trim()}\n`;
   if (pwaInstructions) output += `\n${pwaInstructions.trim()}\n`;
   if (starlightInstructions) output += `\n${starlightInstructions.trim()}\n`;
   if (cliInstructions) output += `\n${cliInstructions.trim()}\n`;
@@ -359,6 +362,32 @@ function getHuskyInstructions(runCmd: string) {
   return `${pc.bold("Git hooks with Husky:")}\n${pc.cyan(
     "•",
   )} Initialize hooks: ${`${runCmd} prepare`}\n`;
+}
+
+function getTestingAddonsInstructions(runCmd: string, addons: Addons[]) {
+  let instructions = "";
+
+  if (addons.includes("testing")) {
+    instructions += `${pc.bold("Testing:")}\n${pc.cyan(
+      "•",
+    )} Run unit tests: ${`${runCmd} test`} (${`${runCmd} test:coverage`} for coverage)\n`;
+  }
+
+  if (addons.includes("e2e-testing")) {
+    instructions += `${pc.bold("E2E testing (Playwright):")}\n${pc.cyan(
+      "•",
+    )} Install browsers once: ${`${runCmd} test:e2e:install`}\n${pc.cyan(
+      "•",
+    )} Run e2e tests: ${`${runCmd} test:e2e`} (boots dev servers; override with E2E_WEB_URL / E2E_API_URL)\n`;
+  }
+
+  if (addons.includes("quality-metrics")) {
+    instructions += `${pc.bold("Quality metrics:")}\n${pc.cyan(
+      "•",
+    )} Generate reports: ${`${runCmd} quality`} → reports/quality/index.html\n`;
+  }
+
+  return instructions;
 }
 
 function getLintingInstructions(runCmd: string) {

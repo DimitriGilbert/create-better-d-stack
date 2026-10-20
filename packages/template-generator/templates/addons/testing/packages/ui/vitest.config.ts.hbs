@@ -1,0 +1,17 @@
+import { fileURLToPath } from "node:url";
+
+import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({
+    environment: "jsdom",
+    setupFiles: ["../../packages/config/vitest/setup.ts"],
+    resolve: {
+      // Components import each other via the package specifier; vitest does
+      // not read tsconfig paths, so map it to the package source explicitly.
+      alias: { "@{{projectName}}/ui": fileURLToPath(new URL("./src", import.meta.url)) },
+    },
+  }),
+);

@@ -28,9 +28,9 @@ For brand-new projects, use the **scaffold-project** skill instead.
 
 ## Available addons
 
-`pwa`, `tauri`, `electrobun`, `starlight`, `biome`, `lefthook`, `husky`, `mcp`, `turborepo`, `nx`, `vite-plus`, `fumadocs`, `ultracite`, `oxlint`, `opentui`, `wxt`, `skills`, `evlog`, `cli`, `shadcn-registry`.
+`pwa`, `tauri`, `electrobun`, `starlight`, `biome`, `lefthook`, `husky`, `mcp`, `turborepo`, `nx`, `vite-plus`, `fumadocs`, `ultracite`, `oxlint`, `opentui`, `wxt`, `skills`, `evlog`, `cli`, `shadcn-registry`, `testing`, `e2e-testing`, `quality-metrics`.
 
-Note: `nx`, `turborepo`, and `vite-plus` are mutually exclusive task runners. Use `bts_get_schema` for nested addon options (e.g. Fumadocs templates/search/AI chat, WXT templates, OpenTUI templates).
+Note: `nx`, `turborepo`, and `vite-plus` are mutually exclusive task runners. `quality-metrics` requires `testing` — include both when adding it. Use `bts_get_schema` for nested addon options (e.g. Fumadocs templates/search/AI chat, WXT templates, OpenTUI templates).
 
 ## Rules
 

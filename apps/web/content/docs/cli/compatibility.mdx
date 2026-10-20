@@ -196,6 +196,12 @@ served over HTTPS (or localhost), rather than relying on the development server.
 
 - `nx`, `turborepo`, and `vite-plus` are mutually exclusive — only one can be selected per project
 
+### Testing Addons
+
+- `testing`: Works with every project shape — emits a shared Vitest config factory plus per-workspace configs and smoke tests
+- `e2e-testing`: Requires at least one HTTP surface — a web frontend, a Node/Bun server backend (`hono`, `express`, `fastify`, `elysia`), or `--backend self`. Native-only and Convex-only projects have no HTTP surface to test
+- `quality-metrics`: Requires `testing` — it is added automatically on the interactive and flag paths, and programmatic/mcp callers must include both
+
 ```bash
 # ❌ Invalid - two task runners
 create-better-t-stack --addons turborepo nx
