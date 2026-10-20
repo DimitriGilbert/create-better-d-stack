@@ -45,7 +45,7 @@ The hosted MCP server can't change an existing project.
 
 ## What can be added
 
-Addons: `pwa`, `tauri`, `electrobun`, `starlight`, `fumadocs`, `biome`, `oxlint`, `ultracite`, `husky`, `lefthook`, `turborepo`, `nx`, `vite-plus`, `mcp`, `skills`, `opentui`, `wxt`, `evlog`.
+Addons: `pwa`, `tauri`, `electrobun`, `starlight`, `fumadocs`, `biome`, `oxlint`, `ultracite`, `husky`, `lefthook`, `turborepo`, `nx`, `vite-plus`, `mcp`, `skills`, `opentui`, `wxt`, `evlog`, `shadcn-registry`.
 
 - `turborepo`, `nx` and `vite-plus` are task runners. A project can have one.
 - `axiom` can't be added later. It sets up deployment infrastructure, so it must be chosen at creation. If the user asks for it, say so instead of planning it.

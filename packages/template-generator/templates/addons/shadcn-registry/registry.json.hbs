@@ -1,0 +1,56 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "{{projectName}}",
+  "homepage": "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}",
+  "items": [
+    {
+      "name": "utils",
+      "type": "registry:lib",
+      "title": "Utils",
+      "description": "Shared utilities, including the cn() class-name helper.",
+      "dependencies": ["cn@^0.2.5"],
+      "files": [
+        {
+          "path": "registry/ui/utils.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "A button component built on Base UI with CVA variants.",
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "dependencies": ["@base-ui/react@^1.8.0", "class-variance-authority@^0.7.1"],
+      "files": [
+        {
+          "path": "registry/ui/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "type": "registry:ui",
+      "title": "Card",
+      "description": "A card container with header, content, and footer slots.",
+      "registryDependencies": [
+        "http://localhost:{{#if (includes frontend "react-router")}}5173{{else}}3001{{/if}}/r/utils.json"
+      ],
+      "css": {
+        "@utility cn-font-heading": {
+          "font-family": "var(--font-heading, inherit)"
+        }
+      },
+      "files": [
+        {
+          "path": "registry/ui/card.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}

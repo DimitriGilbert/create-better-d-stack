@@ -597,6 +597,8 @@ function generateFeaturesList(
     nx: "- **Nx** - Smart monorepo task orchestration and caching",
     "vite-plus":
       "- **Vite+** - Unified Vite toolchain, workspace task runner, linting, and formatting",
+    "shadcn-registry":
+      "- **shadcn Registry** - Distribute a curated subset of packages/ui via a shadcn registry",
   } satisfies Record<string, string>;
 
   for (const addon of addons) {
@@ -849,6 +851,10 @@ function generateScriptsList(
   if (addons.includes("starlight")) {
     scripts += `\n- \`cd apps/docs && ${packageManagerRunCmd} dev\`: Start documentation site
 - \`cd apps/docs && ${packageManagerRunCmd} build\`: Build documentation site`;
+  }
+
+  if (addons.includes("shadcn-registry")) {
+    scripts += `\n- \`${packageManagerRunCmd} registry:build\`: Build the shadcn registry into apps/web/public/r`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {

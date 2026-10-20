@@ -120,6 +120,9 @@ export async function displayPostInstallInstructions(
   const starlightInstructions = addons?.includes("starlight")
     ? getStarlightInstructions(runCmd)
     : "";
+  const shadcnRegistryInstructions = addons?.includes("shadcn-registry")
+    ? getShadcnRegistryInstructions(runCmd)
+    : "";
   const clerkInstructions =
     config.auth === "clerk" ? getClerkInstructions(frontend || [], backend, api) : "";
   const alchemyDeployInstructions = getAlchemyDeployInstructions(
@@ -275,6 +278,7 @@ export async function displayPostInstallInstructions(
   if (lintingInstructions) output += `\n${lintingInstructions.trim()}\n`;
   if (pwaInstructions) output += `\n${pwaInstructions.trim()}\n`;
   if (starlightInstructions) output += `\n${starlightInstructions.trim()}\n`;
+  if (shadcnRegistryInstructions) output += `\n${shadcnRegistryInstructions.trim()}\n`;
   if (clerkInstructions) output += `\n${clerkInstructions.trim()}\n`;
   if (betterAuthConvexInstructions) output += `\n${betterAuthConvexInstructions.trim()}\n`;
   if (polarInstructions) output += `\n${polarInstructions.trim()}\n`;
@@ -547,6 +551,14 @@ function getStarlightInstructions(runCmd: string) {
   )} Start docs site: ${`cd apps/docs && ${runCmd} dev`}\n${pc.cyan(
     "•",
   )} Build docs site: ${`cd apps/docs && ${runCmd} build`}`;
+}
+
+function getShadcnRegistryInstructions(runCmd: string) {
+  return `\n${pc.bold("shadcn registry:")}\n${pc.cyan(
+    "•",
+  )} Build registry items: ${`${runCmd} registry:build`}\n${pc.cyan(
+    "•",
+  )} Items emit to ${"apps/web/public/r/<name>.json"} — serve them with the web\n   app so consumers can run ${"shadcn add <url>/r/<name>.json"}`;
 }
 
 function getNoOrmWarning() {

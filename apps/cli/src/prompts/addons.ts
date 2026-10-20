@@ -114,6 +114,10 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
       label = "Axiom";
       hint = "Managed production observability through evlog and Alchemy";
       break;
+    case "shadcn-registry":
+      label = "shadcn Registry";
+      hint = "Distribute a curated subset of packages/ui via a shadcn registry";
+      break;
     default:
       label = addon;
       hint = `Add ${addon}`;
@@ -126,7 +130,7 @@ const ADDON_GROUPS = {
   "Monorepo & Tasks": ["turborepo", "nx", "vite-plus"],
   "Code Quality": ["biome", "oxlint", "ultracite", "husky", "lefthook"],
   Documentation: ["starlight", "fumadocs"],
-  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt"],
+  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt", "shadcn-registry"],
   Observability: ["evlog", "axiom"],
   "AI & Agent Tools": ["skills", "mcp"],
 };
