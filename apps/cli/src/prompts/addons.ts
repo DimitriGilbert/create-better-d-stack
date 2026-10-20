@@ -114,6 +114,10 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
       label = "Axiom";
       hint = "Managed production observability through evlog and Alchemy";
       break;
+    case "cli":
+      label = "CLI";
+      hint = "Commander-based command-line app in apps/cli, wired into the workspace";
+      break;
     default:
       label = addon;
       hint = `Add ${addon}`;
@@ -126,7 +130,7 @@ const ADDON_GROUPS = {
   "Monorepo & Tasks": ["turborepo", "nx", "vite-plus"],
   "Code Quality": ["biome", "oxlint", "ultracite", "husky", "lefthook"],
   Documentation: ["starlight", "fumadocs"],
-  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt"],
+  "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt", "cli"],
   Observability: ["evlog", "axiom"],
   "AI & Agent Tools": ["skills", "mcp"],
 };

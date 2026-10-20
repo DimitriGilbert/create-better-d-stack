@@ -78,6 +78,7 @@ export const dependencyVersionMap = {
 
   tsx: "^4.23.13",
   "@types/node": "^26.4.1",
+  commander: "^15.0.0",
 
   "@types/bun": "^1.4.3",
 

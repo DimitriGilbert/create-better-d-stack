@@ -91,4 +91,43 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
       }
     }
   }
+
+  if (config.addons.includes("cli")) {
+    const cliPkgPath = "apps/cli/package.json";
+    if (vfs.exists(cliPkgPath)) {
+      addPackageDependency({
+        vfs,
+        packagePath: cliPkgPath,
+        dependencies: ["commander"],
+        devDependencies: ["typescript", "tsdown", "tsx", "@types/node"],
+        customDevDependencies: {
+          [`@${config.projectName}/config`]: config.packageManager === "npm" ? "*" : "workspace:*",
+        },
+      });
+
+      // The `testing` addon's shared vitest factory is the marker: when it
+      // exists, wire vitest into apps/cli. The reverse direction (`add testing`
+      // onto a project that already has apps/cli) is handled by the testing
+      // addon's own post-loop emission pass, not this block.
+      if (vfs.exists("packages/config/vitest/base.ts")) {
+        addPackageDependency({
+          vfs,
+          packagePath: cliPkgPath,
+          customDevDependencies: {
+            vitest: "^4.1.12",
+            "@vitest/coverage-istanbul": "^4.1.12",
+          },
+        });
+        const cliPkg = vfs.readJson<PackageJson>(cliPkgPath);
+        if (cliPkg) {
+          cliPkg.scripts = {
+            ...cliPkg.scripts,
+            test: "vitest run",
+            "test:coverage": "vitest run --coverage",
+          };
+          vfs.writeJson(cliPkgPath, cliPkg);
+        }
+      }
+    }
+  }
 }

@@ -446,6 +446,10 @@ function generateProjectStructure(config: ProjectConfig): string {
     structure.push("│   ├── docs/        # Documentation site (Astro Starlight)");
   }
 
+  if (addons.includes("cli")) {
+    structure.push("│   ├── cli/         # Command-line interface (Commander)");
+  }
+
   if (!isBackendSelf && backend !== "none" && !isConvex) {
     const backendName = (backend[0]?.toUpperCase() ?? "") + backend.slice(1);
     const apiName = api !== "none" ? api.toUpperCase() : "";
@@ -593,6 +597,7 @@ function generateFeaturesList(
     oxlint: "- **Oxlint** - Oxlint + Oxfmt (linting & formatting)",
     husky: "- **Husky** - Git hooks for code quality",
     starlight: "- **Starlight** - Documentation site with Astro",
+    cli: "- **CLI** - Commander-based command-line app (apps/cli)",
     turborepo: "- **Turborepo** - Optimized monorepo build system",
     nx: "- **Nx** - Smart monorepo task orchestration and caching",
     "vite-plus":
@@ -849,6 +854,14 @@ function generateScriptsList(
   if (addons.includes("starlight")) {
     scripts += `\n- \`cd apps/docs && ${packageManagerRunCmd} dev\`: Start documentation site
 - \`cd apps/docs && ${packageManagerRunCmd} build\`: Build documentation site`;
+  }
+
+  if (addons.includes("cli")) {
+    // npm needs the `--` separator to forward args to the script; pnpm and bun
+    // forward positional args directly (a literal `--` reaches the script on pnpm).
+    const argSep = packageManagerRunCmd === "npm run" ? " --" : "";
+    scripts += `\n- \`cd apps/cli && ${packageManagerRunCmd} dev${argSep} info\`: Run the CLI in development (tsx)
+- \`cd apps/cli && ${packageManagerRunCmd} build\`: Build the CLI to dist/index.mjs`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {
