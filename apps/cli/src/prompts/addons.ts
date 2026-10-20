@@ -18,7 +18,7 @@ import {
   validateAddonCompatibility,
 } from "../utils/compatibility-rules";
 import { UserCancelledError } from "../utils/errors";
-import { isCancel, navigableGroupMultiselect } from "./navigable";
+import { navigableGroupMultiselect } from "./navigable";
 
 type AddonOption = {
   value: Addons;
@@ -244,7 +244,7 @@ export async function getAddonsChoice(
     validate: validateAddonSelection,
   });
 
-  if (isCancel(response)) throw new UserCancelledError({ message: "Operation cancelled" });
+  if (!Array.isArray(response)) throw new UserCancelledError({ message: "Operation cancelled" });
 
   const resolved = resolveAddonDependencies(response);
   const added = resolved.filter((addon) => !response.includes(addon));

@@ -14,17 +14,6 @@ type PackageJson = {
   [key: string]: JsonValue | undefined;
 };
 
-function appendGitignoreLines(vfs: VirtualFileSystem, lines: string[]): void {
-  const gitignore = vfs.readFile(".gitignore");
-  if (gitignore === undefined) return;
-
-  const existing = new Set(gitignore.split("\n").map((line) => line.trim()));
-  const additions = lines.filter((line) => !existing.has(line));
-  if (additions.length === 0) return;
-
-  vfs.writeFile(".gitignore", `${gitignore.trimEnd()}\n\n${additions.join("\n")}\n`);
-}
-
 export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig): void {
   if (!config.addons || config.addons.length === 0) return;
 
@@ -75,7 +64,9 @@ export function processAddonsDeps(vfs: VirtualFileSystem, config: ProjectConfig)
         vfs,
         packagePath: webPkgPath,
         dependencies: ["vite-plugin-pwa"],
-        devDependencies: ["@vite-pwa/assets-generator"],
+        devDependencies: config.frontend.some((f) => ["react-router", "solid"].includes(f))
+          ? ["@vite-pwa/assets-generator", "workbox-window"]
+          : ["@vite-pwa/assets-generator"],
       });
       const webPkg = vfs.readJson<PackageJson>(webPkgPath);
       if (webPkg) {
