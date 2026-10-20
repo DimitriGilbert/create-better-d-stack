@@ -1,4 +1,9 @@
-import { TASK_RUNNER_ADDONS, OBSERVABILITY_ADDONS, type Addons } from "@better-t-stack/types";
+import {
+  TASK_RUNNER_ADDONS,
+  OBSERVABILITY_ADDONS,
+  resolveAddonDependencies,
+  type Addons,
+} from "@better-t-stack/types";
 
 import { DEFAULT_STACK, type StackState, TECH_OPTIONS } from "./constant";
 
@@ -63,7 +68,7 @@ function resolveAddonConflicts(addons: readonly Addons[]): Addons[] {
 
 export function sanitizeAddons(addons: readonly string[] | null | undefined) {
   const sanitized = sanitizeMultiSelection(addons, validAddonIds, DEFAULT_STACK.addons);
-  return resolveAddonConflicts(sanitized);
+  return resolveAddonDependencies(resolveAddonConflicts(sanitized));
 }
 
 export function sanitizeExamples(examples: readonly string[] | null | undefined) {

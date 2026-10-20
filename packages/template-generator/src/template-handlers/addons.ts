@@ -1,6 +1,7 @@
-import type { ProjectConfig } from "@better-t-stack/types";
+import { SERVER_BACKENDS, type ProjectConfig } from "@better-t-stack/types";
 
 import type { VirtualFileSystem } from "../core/virtual-fs";
+import { TESTED_PACKAGE_DIRS } from "../utils/tested-package-dirs";
 import { type TemplateData, processTemplatesFromPrefix } from "./utils";
 
 export async function processAddonTemplates(
@@ -10,11 +11,34 @@ export async function processAddonTemplates(
 ): Promise<void> {
   if (!config.addons || config.addons.length === 0) return;
 
+  // Emit the shared vitest config factory before the loop so sibling addons
+  // can observe it (e.g. the cli addon checks for packages/config/vitest).
+  if (config.addons.includes("testing")) {
+    processTemplatesFromPrefix(vfs, templates, "addons/testing/shared", "", config);
+  }
+
   for (const addon of config.addons) {
     if (addon === "none") continue;
 
     // Task runners are handled programmatically by generators.
     if (addon === "turborepo" || addon === "nx" || addon === "vite-plus") continue;
+
+    // testing's shared files already emitted above; its per-package files are
+    // emitted after the loop. quality-metrics templates are copied verbatim
+    // via the default dispatch below.
+    if (addon === "testing") continue;
+
+    if (addon === "e2e-testing") {
+      processTemplatesFromPrefix(vfs, templates, "addons/e2e-testing/base", "", config);
+      if (vfs.directoryExists("apps/web")) {
+        processTemplatesFromPrefix(vfs, templates, "addons/e2e-testing/web", "", config);
+      }
+      const hasHttpBackend = SERVER_BACKENDS.includes(config.backend) || config.backend === "self";
+      if (hasHttpBackend) {
+        processTemplatesFromPrefix(vfs, templates, "addons/e2e-testing/api", "", config);
+      }
+      continue;
+    }
 
     if (addon === "pwa") {
       if (
@@ -42,5 +66,21 @@ export async function processAddonTemplates(
     }
 
     processTemplatesFromPrefix(vfs, templates, `addons/${addon}`, "", config);
+  }
+
+  if (config.addons.includes("testing")) {
+    for (const dir of TESTED_PACKAGE_DIRS) {
+      if (!vfs.exists(`${dir}/package.json`)) continue;
+      if (dir === "apps/web" && config.frontend.includes("nuxt")) {
+        // Nuxt apps have app/ instead of src/
+        processTemplatesFromPrefix(vfs, templates, "addons/testing/apps/web", dir, config);
+        processTemplatesFromPrefix(vfs, templates, "addons/testing/apps-web-nuxt", dir, config);
+      } else if (dir === "apps/web") {
+        processTemplatesFromPrefix(vfs, templates, "addons/testing/apps/web", dir, config);
+        processTemplatesFromPrefix(vfs, templates, "addons/testing/apps-web-src", dir, config);
+      } else {
+        processTemplatesFromPrefix(vfs, templates, `addons/testing/${dir}`, dir, config);
+      }
+    }
   }
 }

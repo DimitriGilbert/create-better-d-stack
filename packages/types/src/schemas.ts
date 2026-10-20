@@ -54,11 +54,14 @@ export const AddonsSchema = z
     "skills",
     "evlog",
     "axiom",
+    "testing",
+    "e2e-testing",
+    "quality-metrics",
     "none",
   ])
   .describe("Additional addons");
 
-const AddonsListSchema = z.array(AddonsSchema).superRefine((addons, ctx) => {
+export const AddonsListSchema = z.array(AddonsSchema).superRefine((addons, ctx) => {
   const taskRunners = addons.filter((addon) => TASK_RUNNER_ADDONS.includes(addon));
   if (taskRunners.length > 1) {
     ctx.addIssue({
@@ -72,6 +75,14 @@ const AddonsListSchema = z.array(AddonsSchema).superRefine((addons, ctx) => {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "`evlog` and `axiom` cannot be used together because Axiom includes evlog",
+    });
+  }
+
+  if (addons.includes("quality-metrics") && !addons.includes("testing")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "The 'quality-metrics' addon requires the 'testing' addon. Include 'testing' in --addons.",
     });
   }
 });

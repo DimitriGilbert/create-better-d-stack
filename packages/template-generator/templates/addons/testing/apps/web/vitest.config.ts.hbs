@@ -1,0 +1,11 @@
+import { defineConfig } from "vitest/config";
+
+import { createTestConfig } from "../../packages/config/vitest/base";
+
+export default defineConfig(
+  createTestConfig({
+    environment:
+      "{{#if (or (includes frontend "tanstack-router") (includes frontend "react-router") (includes frontend "tanstack-start") (includes frontend "next"))}}jsdom{{else}}node{{/if}}",
+    setupFiles: ["../../packages/config/vitest/setup.ts"],
+  }),
+);

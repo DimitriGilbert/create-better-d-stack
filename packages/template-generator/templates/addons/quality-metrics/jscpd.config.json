@@ -1,0 +1,26 @@
+{
+  "minLines": 8,
+  "minTokens": 80,
+  "reporters": ["console", "html", "json"],
+  "output": "reports/jscpd",
+  "exitCode": 0,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/.output/**",
+    "**/.svelte-kit/**",
+    "**/.turbo/**",
+    "**/.expo/**",
+    "**/_generated/**",
+    "**/*.gen.ts",
+    "**/routeTree.gen.ts",
+    "**/reports/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/*.hbs"
+  ]
+}

@@ -597,6 +597,10 @@ function generateFeaturesList(
     nx: "- **Nx** - Smart monorepo task orchestration and caching",
     "vite-plus":
       "- **Vite+** - Unified Vite toolchain, workspace task runner, linting, and formatting",
+    testing: "- **Testing** - Vitest unit tests with a shared config factory in every workspace",
+    "e2e-testing": "- **E2E Testing** - Playwright browser and API end-to-end tests in apps/e2e",
+    "quality-metrics":
+      "- **Quality Metrics** - Coverage, CRAP, duplication, and knip reports under reports/",
   } satisfies Record<string, string>;
 
   for (const addon of addons) {
@@ -849,6 +853,21 @@ function generateScriptsList(
   if (addons.includes("starlight")) {
     scripts += `\n- \`cd apps/docs && ${packageManagerRunCmd} dev\`: Start documentation site
 - \`cd apps/docs && ${packageManagerRunCmd} build\`: Build documentation site`;
+  }
+
+  if (addons.includes("testing")) {
+    scripts += `\n- \`${packageManagerRunCmd} test\`: Run unit tests in every workspace
+- \`${packageManagerRunCmd} test:coverage\`: Run unit tests with istanbul coverage`;
+  }
+
+  if (addons.includes("e2e-testing")) {
+    scripts += `\n- \`${packageManagerRunCmd} test:e2e:install\`: Install Playwright browsers (first run)
+- \`${packageManagerRunCmd} test:e2e\`: Run Playwright e2e tests (boots dev servers)`;
+  }
+
+  if (addons.includes("quality-metrics")) {
+    scripts += `\n- \`${packageManagerRunCmd} quality\`: Generate coverage, CRAP, and duplication reports (reports/quality/index.html)
+- \`${packageManagerRunCmd} quality:knip\`: Report unused files, exports, and dependencies (exits non-zero on findings — intentionally run manually, not chained into \`quality\`)`;
   }
 
   if (webDeploy === "docker" || serverDeploy === "docker") {

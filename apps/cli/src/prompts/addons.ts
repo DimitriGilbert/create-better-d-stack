@@ -1,3 +1,5 @@
+import { log } from "@clack/prompts";
+
 import { DEFAULT_CONFIG } from "../constants";
 import {
   type Addons,
@@ -12,6 +14,7 @@ import {
   OBSERVABILITY_ADDONS,
   TASK_RUNNER_ADDONS,
   getCompatibleAddons,
+  resolveAddonDependencies,
   validateAddonCompatibility,
 } from "../utils/compatibility-rules";
 import { UserCancelledError } from "../utils/errors";
@@ -114,6 +117,18 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
       label = "Axiom";
       hint = "Managed production observability through evlog and Alchemy";
       break;
+    case "testing":
+      label = "Testing";
+      hint = "Vitest unit tests for every workspace (shared config factory)";
+      break;
+    case "e2e-testing":
+      label = "E2E (Playwright)";
+      hint = "Browser and API end-to-end tests in apps/e2e";
+      break;
+    case "quality-metrics":
+      label = "Quality Metrics";
+      hint = "Coverage, CRAP, duplication, and knip reports (requires Testing)";
+      break;
     default:
       label = addon;
       hint = `Add ${addon}`;
@@ -125,6 +140,7 @@ function getAddonDisplay(addon: Addons): AddonDisplay {
 const ADDON_GROUPS = {
   "Monorepo & Tasks": ["turborepo", "nx", "vite-plus"],
   "Code Quality": ["biome", "oxlint", "ultracite", "husky", "lefthook"],
+  "Testing & Quality": ["testing", "e2e-testing", "quality-metrics"],
   Documentation: ["starlight", "fumadocs"],
   "Platform Extensions": ["pwa", "tauri", "electrobun", "opentui", "wxt"],
   Observability: ["evlog", "axiom"],
@@ -222,7 +238,14 @@ export async function getAddonsChoice(
 
   if (isCancel(response)) throw new UserCancelledError({ message: "Operation cancelled" });
 
-  return response;
+  const resolved = resolveAddonDependencies(response);
+  const added = resolved.filter((addon) => !response.includes(addon));
+  if (added.length > 0) {
+    log.info(
+      `Added required addon${added.length > 1 ? "s" : ""}: ${added.join(", ")} (required by your addon selection)`,
+    );
+  }
+  return resolved;
 }
 
 export async function getAddonsToAdd(config: AddonProjectConfig) {
@@ -261,5 +284,5 @@ export async function getAddonsToAdd(config: AddonProjectConfig) {
 
   if (!Array.isArray(response)) throw new UserCancelledError({ message: "Operation cancelled" });
 
-  return response;
+  return resolveAddonDependencies(response);
 }

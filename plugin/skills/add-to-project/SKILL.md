@@ -45,9 +45,10 @@ The hosted MCP server can't change an existing project.
 
 ## What can be added
 
-Addons: `pwa`, `tauri`, `electrobun`, `starlight`, `fumadocs`, `biome`, `oxlint`, `ultracite`, `husky`, `lefthook`, `turborepo`, `nx`, `vite-plus`, `mcp`, `skills`, `opentui`, `wxt`, `evlog`.
+Addons: `pwa`, `tauri`, `electrobun`, `starlight`, `fumadocs`, `biome`, `oxlint`, `ultracite`, `husky`, `lefthook`, `turborepo`, `nx`, `vite-plus`, `mcp`, `skills`, `opentui`, `wxt`, `evlog`, `testing`, `e2e-testing`, `quality-metrics`.
 
 - `turborepo`, `nx` and `vite-plus` are task runners. A project can have one.
+- `quality-metrics` requires `testing` — include both when adding it.
 - `axiom` can't be added later. It sets up deployment infrastructure, so it must be chosen at creation. If the user asks for it, say so instead of planning it.
 - A workspace package (`package: "shared"`, or `add --package shared`) scaffolds `packages/shared` with a manifest, the shared tsconfig and `src/index.ts`.
 

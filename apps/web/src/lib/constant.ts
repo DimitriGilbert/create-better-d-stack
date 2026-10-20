@@ -692,6 +692,30 @@ export const TECH_OPTIONS: TechOptions = {
       color: "from-violet-500 to-indigo-700",
       default: false,
     },
+    {
+      id: "testing",
+      name: "Testing",
+      description: "Vitest unit tests for every workspace with a shared config factory",
+      icon: "",
+      color: "from-lime-500 to-green-700",
+      default: false,
+    },
+    {
+      id: "e2e-testing",
+      name: "E2E Testing",
+      description: "Playwright browser and API end-to-end tests in apps/e2e",
+      icon: "",
+      color: "from-green-500 to-emerald-700",
+      default: false,
+    },
+    {
+      id: "quality-metrics",
+      name: "Quality Metrics",
+      description: "Coverage, CRAP, duplication, and knip reports (requires Testing)",
+      icon: "",
+      color: "from-rose-500 to-pink-700",
+      default: false,
+    },
   ],
   examples: [
     {

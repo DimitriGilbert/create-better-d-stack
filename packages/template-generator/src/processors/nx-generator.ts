@@ -59,6 +59,17 @@ export function generateNxConfig(config: ProjectConfig): NxConfig {
     },
   };
 
+  // Declared so `nx run-many -t <script>` resolves them when the testing addons
+  // add per-package test scripts.
+  if (config.addons.includes("testing")) {
+    targetDefaults.test = { inputs: ["default", "^default"] };
+    targetDefaults["test:coverage"] = { cache: false, inputs: ["default", "^default"] };
+  }
+
+  if (config.addons.includes("e2e-testing")) {
+    targetDefaults["test:e2e"] = { cache: false };
+  }
+
   if (config.addons.includes("electrobun")) Object.assign(targetDefaults, getElectrobunTargets());
   if (isConvex) Object.assign(targetDefaults, getConvexTargets());
   if (!isConvex && hasDatabase) Object.assign(targetDefaults, getDatabaseTargets(dbSupport));
